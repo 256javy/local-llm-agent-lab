@@ -1,0 +1,31 @@
+{
+  "id": "gemma-4-12b-qat-mtp",
+  "displayName": "Gemma 4 12B IT QAT with MTP",
+  "description": "Perfil recomendado para velocidad, contexto y uso agentic en 16 GB.",
+  "runtime": {
+    "adapter": "llama-cpp",
+    "repository": "https://github.com/ggml-org/llama.cpp.git",
+    "revision": "0ab9d6fed73dbc5dc8026c868cb10a6728c4ed48",
+    "cmakeArgs": ["-DGGML_CUDA=ON", "-DGGML_NATIVE=OFF", "-DBUILD_SHARED_LIBS=OFF", "-DCMAKE_CUDA_ARCHITECTURES=120"]
+  },
+  "model": {
+    "repository": "unsloth/gemma-4-12B-it-qat-GGUF",
+    "file": "gemma-4-12B-it-qat-UD-Q4_K_XL.gguf",
+    "revision": "980b060c40a8539ac159e0501a3e0f66a6365af3",
+    "sha256": null
+  },
+  "draftModel": {
+    "repository": "unsloth/gemma-4-12B-it-qat-GGUF",
+    "file": "MTP/mtp-gemma-4-12B-it-Q4_0.gguf",
+    "revision": "980b060c40a8539ac159e0501a3e0f66a6365af3",
+    "sha256": null
+  },
+  "server": {
+    "contextSize": 65536,
+    "parallel": 1,
+    "arguments": ["--n-gpu-layers", "99", "--flash-attn", "on", "--cache-type-k", "q8_0", "--cache-type-v", "q8_0", "--jinja", "--spec-type", "draft-mtp", "--spec-draft-n-max", "2", "--temp", "1.0", "--top-p", "0.95", "--top-k", "64"]
+  },
+  "requirements": {"minimumVramGiB": 12, "recommendedVramGiB": 16},
+  "capabilities": {"chatCompletions": true, "responses": "verify", "toolCalling": true, "reasoning": true, "vision": false, "audio": false},
+  "status": "candidate"
+}

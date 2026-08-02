@@ -1,0 +1,15 @@
+{
+  "id": "smoke-basic",
+  "messages": [
+    {"role": "system", "content": "Responde de forma breve y precisa."},
+    {"role": "user", "content": "Responde exactamente con: OK"}
+  ],
+  "max_tokens": 64,
+  "temperature": 0,
+  "chat_template_kwargs": {
+    "enable_thinking": false
+  },
+  "assert": {
+    "contentContains": "OK"
+  }
+}

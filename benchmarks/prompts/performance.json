@@ -1,0 +1,17 @@
+{
+  "id": "performance-code",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Escribe una función Python pura llamada unique_sorted que reciba enteros, elimine duplicados y retorne una lista ordenada. Incluye únicamente el código."
+    }
+  ],
+  "max_tokens": 256,
+  "temperature": 0,
+  "chat_template_kwargs": {
+    "enable_thinking": false
+  },
+  "assert": {
+    "contentContains": "def unique_sorted"
+  }
+}

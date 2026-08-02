@@ -1,0 +1,12 @@
+.git
+.env
+.state
+.local
+data
+models
+cache
+benchmark-results
+__pycache__
+*.pyc
+*.gguf
+*.litertlm

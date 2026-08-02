@@ -1,0 +1,25 @@
+{
+  "id": "qwen-3.6-moe-2bit",
+  "displayName": "Qwen 3.6 35B-A3B MoE 2-bit with MTP",
+  "description": "Perfil Qwen de alta capacidad ajustado a una GPU de 16 GB.",
+  "runtime": {
+    "adapter": "llama-cpp",
+    "repository": "https://github.com/ggml-org/llama.cpp.git",
+    "revision": "2dff7ff8f90ce6daefd6adb097d58a4276e5dd2d",
+    "cmakeArgs": ["-DGGML_CUDA=ON", "-DGGML_NATIVE=OFF", "-DBUILD_SHARED_LIBS=OFF", "-DLLAMA_BUILD_WEBUI=OFF", "-DLLAMA_BUILD_UI=OFF", "-DCMAKE_CUDA_ARCHITECTURES=120"]
+  },
+  "model": {
+    "repository": "havenoammo/Qwen3.6-35B-A3B-MTP-GGUF",
+    "file": "Qwen3.6-35B-A3B-MTP-UD-Q2_K_XL.gguf",
+    "revision": "44ce525026e7e7d0e0915dc1bf83a783c813e75a",
+    "sha256": null
+  },
+  "server": {
+    "contextSize": 32768,
+    "parallel": 1,
+    "arguments": ["--n-gpu-layers", "99", "--flash-attn", "on", "--cache-type-k", "q4_0", "--cache-type-v", "q4_0", "--mmap", "--jinja", "--spec-type", "draft-mtp", "--spec-draft-n-max", "3"]
+  },
+  "requirements": {"minimumVramGiB": 15, "recommendedVramGiB": 16},
+  "capabilities": {"chatCompletions": true, "responses": "verify", "toolCalling": true, "reasoning": true, "vision": false, "audio": false},
+  "status": "experimental"
+}

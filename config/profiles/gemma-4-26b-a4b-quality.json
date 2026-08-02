@@ -1,0 +1,25 @@
+{
+  "id": "gemma-4-26b-a4b-quality",
+  "displayName": "Gemma 4 26B-A4B quality experiment",
+  "description": "Perfil de mayor calidad y margen de VRAM reducido; no es el predeterminado.",
+  "runtime": {
+    "adapter": "llama-cpp",
+    "repository": "https://github.com/ggml-org/llama.cpp.git",
+    "revision": "0ab9d6fed73dbc5dc8026c868cb10a6728c4ed48",
+    "cmakeArgs": ["-DGGML_CUDA=ON", "-DGGML_NATIVE=OFF", "-DBUILD_SHARED_LIBS=OFF", "-DCMAKE_CUDA_ARCHITECTURES=120"]
+  },
+  "model": {
+    "repository": "unsloth/gemma-4-26B-A4B-it-GGUF",
+    "file": "gemma-4-26B-A4B-it-UD-Q3_K_M.gguf",
+    "revision": "c099eb48e663fd284577b04978a94ffccb261841",
+    "sha256": null
+  },
+  "server": {
+    "contextSize": 32768,
+    "parallel": 1,
+    "arguments": ["--n-gpu-layers", "99", "--flash-attn", "on", "--cache-type-k", "q8_0", "--cache-type-v", "q8_0", "--jinja", "--temp", "0.3", "--top-p", "0.9", "--top-k", "20", "--min-p", "0.1"]
+  },
+  "requirements": {"minimumVramGiB": 15, "recommendedVramGiB": 16},
+  "capabilities": {"chatCompletions": true, "responses": "verify", "toolCalling": "verify", "reasoning": true, "vision": false, "audio": false},
+  "status": "experimental"
+}

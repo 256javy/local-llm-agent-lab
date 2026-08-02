@@ -1,0 +1,30 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: docker/llama-cpp/Dockerfile
+      args:
+        LLAMA_CPP_REPOSITORY: ${LLM_LAB_RUNTIME_REPOSITORY:-https://github.com/ggml-org/llama.cpp.git}
+        LLAMA_CPP_REVISION: ${LLM_LAB_RUNTIME_REVISION:-master}
+        LLAMA_CPP_CMAKE_ARGS: ${LLM_LAB_RUNTIME_CMAKE_ARGS:--DGGML_CUDA=ON -DGGML_NATIVE=OFF -DBUILD_SHARED_LIBS=OFF}
+    image: ${LLM_LAB_RUNTIME_IMAGE:-local/local-llm-agent-lab:latest}
+    container_name: local-llm-agent-lab-server
+    init: true
+    restart: "no"
+    ports:
+      - "${LLM_LAB_HOST:-127.0.0.1}:${LLM_LAB_PORT:-18080}:8080"
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+      LLM_LAB_API_KEY: ${LLM_LAB_API_KEY:-}
+    volumes:
+      - ${LLM_LAB_PROFILE_FILE:-./config/profiles/gemma-4-12b-qat-mtp.json}:/opt/llm-lab/profile.json:ro
+      - ${LLM_LAB_DATA_DIR:-./data}/huggingface:/root/.cache/huggingface
+      - ${LLM_LAB_DATA_DIR:-./data}/models:/models
+    shm_size: "2g"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

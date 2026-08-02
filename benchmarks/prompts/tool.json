@@ -1,0 +1,30 @@
+{
+  "id": "smoke-tool",
+  "messages": [
+    {"role": "user", "content": "Usa la herramienta add para sumar 20 y 22."}
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "add",
+        "description": "Suma dos enteros.",
+        "parameters": {
+          "type": "object",
+          "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+          "required": ["a", "b"]
+        }
+      }
+    }
+  ],
+  "tool_choice": "auto",
+  "max_tokens": 128,
+  "temperature": 0,
+  "assert": {
+    "toolName": "add",
+    "arguments": {
+      "a": 20,
+      "b": 22
+    }
+  }
+}
