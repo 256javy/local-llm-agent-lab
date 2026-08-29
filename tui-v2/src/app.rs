@@ -19,6 +19,7 @@ use crate::ops::{OpEvent, Phase};
 use crate::profiles::Profile;
 use crate::system;
 use crate::ui::footer::Mode as FooterMode;
+use crate::ui::overlay::OverlayKind;
 
 const LOG_TAIL_LINES: usize = 200;
 
@@ -33,6 +34,7 @@ pub struct App {
     pub mode: Mode,
     pub confirm: Option<ConfirmKind>,
     pub running_op: Option<RunningOp>,
+    pub finished_op: Option<FinishedOp>,
     pub help_visible: bool,
     pub spinner_frame: usize,
     pub op_started: Option<Instant>,
@@ -50,6 +52,16 @@ pub struct RunningOp {
     pub log: Vec<String>,
     pub phase: Option<Phase>,
     pub elapsed_secs: u64,
+    pub persistent: bool,
+}
+
+pub struct FinishedOp {
+    pub title: String,
+    pub log: Vec<String>,
+    pub phase: Option<Phase>,
+    pub elapsed_secs: u64,
+    pub ok: bool,
+    pub persistent: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -79,6 +91,7 @@ impl App {
             mode: Mode::Dashboard,
             confirm: None,
             running_op: None,
+            finished_op: None,
             help_visible: false,
             spinner_frame: 0,
             op_started: None,
@@ -144,22 +157,12 @@ impl App {
                 OpEvent::Phase(phase) => op.phase = Some(phase),
                 OpEvent::Done { summary } => {
                     self.last_event = Some(summary);
-                    self.running_op = None;
-                    self.op_started = None;
-                    self.mode = Mode::Dashboard;
-                    if let Err(e) = self.refresh_status_now() {
-                        self.last_event = Some(format!("Error refrescando estado: {e}"));
-                    }
+                    self.finish_op(true);
                     return;
                 }
                 OpEvent::Failed { summary } => {
                     self.last_event = Some(summary);
-                    self.running_op = None;
-                    self.op_started = None;
-                    self.mode = Mode::Dashboard;
-                    if let Err(e) = self.refresh_status_now() {
-                        self.last_event = Some(format!("Error refrescando estado: {e}"));
-                    }
+                    self.finish_op(false);
                     return;
                 }
             }
@@ -182,12 +185,51 @@ impl App {
         Ok(())
     }
 
+    fn finish_op(&mut self, ok: bool) {
+        self.drain_remaining_phase();
+        let snapshot = self.running_op.take().map(|op| FinishedOp {
+            title: op.title,
+            log: op.log,
+            phase: op.phase,
+            elapsed_secs: op.elapsed_secs,
+            persistent: op.persistent,
+            ok,
+        });
+        self.op_started = None;
+        self.mode = Mode::Dashboard;
+        match snapshot {
+            Some(finished) if finished.persistent => {
+                self.finished_op = Some(finished);
+            }
+            _ => {
+                self.finished_op = None;
+                if let Err(e) = self.refresh_status_now() {
+                    self.last_event = Some(format!("Error refrescando estado: {e}"));
+                }
+            }
+        }
+    }
+
+    fn drain_remaining_phase(&mut self) {
+        let Some(op) = self.running_op.as_mut() else {
+            return;
+        };
+        while let Ok(event) = op.rx.try_recv() {
+            if let OpEvent::Phase(phase) = event {
+                op.phase = Some(phase);
+            }
+        }
+    }
+
     fn handle_key(&mut self, key: KeyEvent) -> Result<bool> {
         if self.help_visible {
             if matches!(key.code, KeyCode::Esc | KeyCode::Char('?') | KeyCode::Char('q')) {
                 self.help_visible = false;
             }
             return Ok(false);
+        }
+        if self.finished_op.is_some() {
+            return self.handle_finished_key(key);
         }
         if self.confirm.is_some() {
             return self.handle_confirm_key(key);
@@ -247,6 +289,19 @@ impl App {
                 self.op_started = None;
                 self.last_event = Some("Operación cancelada (Ctrl+C)".into());
                 self.mode = Mode::Dashboard;
+            }
+            _ => {}
+        }
+        Ok(false)
+    }
+
+    fn handle_finished_key(&mut self, key: KeyEvent) -> Result<bool> {
+        match key.code {
+            KeyCode::Esc | KeyCode::Enter | KeyCode::Char('q') => {
+                self.finished_op = None;
+                if let Err(e) = self.refresh_status_now() {
+                    self.last_event = Some(format!("Error refrescando estado: {e}"));
+                }
             }
             _ => {}
         }
@@ -324,7 +379,7 @@ impl App {
         let profile = crate::profiles::get(&self.settings, id)?;
         let settings = self.settings.clone();
         let title = format!("start {id}");
-        self.launch_op(title, move |sink| {
+        self.launch_op(title, false, move |sink| {
             crate::ops::start::StartOp::new(settings, profile).run(&sink)?;
             Ok(())
         })
@@ -334,7 +389,7 @@ impl App {
         let target = crate::profiles::get(&self.settings, id)?;
         let settings = self.settings.clone();
         let title = format!("switch {id}");
-        self.launch_op(title, move |sink| {
+        self.launch_op(title, false, move |sink| {
             crate::ops::switch::SwitchOp::new(settings, target).run(&sink)?;
             Ok(())
         })
@@ -347,7 +402,7 @@ impl App {
         };
         let settings = self.settings.clone();
         let title = "stop".into();
-        self.launch_op(title, move |sink| {
+        self.launch_op(title, false, move |sink| {
             crate::ops::stop::StopOp::new(settings, profile).run(&sink)?;
             Ok(())
         })
@@ -355,7 +410,7 @@ impl App {
 
     fn start_health(&mut self) {
         let settings = self.settings.clone();
-        if let Err(e) = self.launch_op("health".into(), move |sink| {
+        if let Err(e) = self.launch_op("health".into(), true, move |sink| {
             crate::ops::health::HealthOp::new(settings).run(&sink)?;
             Ok(())
         }) {
@@ -365,7 +420,7 @@ impl App {
 
     fn start_doctor(&mut self) {
         let settings = self.settings.clone();
-        if let Err(e) = self.launch_op("doctor".into(), move |sink| {
+        if let Err(e) = self.launch_op("doctor".into(), true, move |sink| {
             crate::ops::doctor::DoctorOp::new(settings).run(&sink)?;
             Ok(())
         }) {
@@ -382,6 +437,7 @@ impl App {
             log: Vec::new(),
             phase: Some(Phase::Init),
             elapsed_secs: 0,
+            persistent: true,
         });
         self.op_started = Some(Instant::now());
         self.mode = Mode::Operation;
@@ -390,7 +446,7 @@ impl App {
         });
     }
 
-    fn launch_op<F>(&mut self, title: String, op: F) -> Result<()>
+    fn launch_op<F>(&mut self, title: String, persistent: bool, op: F) -> Result<()>
     where
         F: FnOnce(Sender<OpEvent>) -> Result<()> + Send + 'static,
     {
@@ -401,6 +457,7 @@ impl App {
             log: Vec::new(),
             phase: Some(Phase::Init),
             elapsed_secs: 0,
+            persistent,
         });
         self.op_started = Some(Instant::now());
         self.mode = Mode::Operation;
@@ -465,7 +522,17 @@ impl App {
                     log_lines: &op.log,
                     frame_idx: spinner_frame,
                     elapsed_secs: op.elapsed_secs,
-                    can_cancel: true,
+                    kind: OverlayKind::Running,
+                };
+                crate::ui::overlay::draw(frame, area, theme, &overlay);
+            } else if let Some(finished) = &self.finished_op {
+                let overlay = crate::ui::overlay::OverlayView {
+                    title: &finished.title,
+                    phase: finished.phase.as_ref(),
+                    log_lines: &finished.log,
+                    frame_idx: spinner_frame,
+                    elapsed_secs: finished.elapsed_secs,
+                    kind: OverlayKind::Finished { ok: finished.ok },
                 };
                 crate::ui::overlay::draw(frame, area, theme, &overlay);
             }

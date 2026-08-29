@@ -215,6 +215,34 @@ pub fn run(
     proc.wait_with_output()
 }
 
+/// Ejecuta un comando arbitrario (no necesariamente `docker compose`) en el
+/// directorio del repo, devolviendo su salida. Pensado para utilidades de
+/// diagnóstico como `docker info` o `docker compose version --short`.
+pub fn run_raw(
+    settings: &Settings,
+    env: &HashMap<String, String>,
+    argv: &[&str],
+) -> Result<CommandOutput> {
+    if argv.is_empty() {
+        return Err(color_eyre::eyre::eyre!("argv vacío"));
+    }
+    let mut cmd = Command::new(argv[0]);
+    cmd.args(&argv[1..])
+        .current_dir(&settings.repo_dir)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    for (k, v) in env {
+        cmd.env(OsString::from(k), OsString::from(v));
+    }
+    let output = cmd.output()?;
+    Ok(CommandOutput {
+        status: output.status.code().unwrap_or(-1),
+        stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
+        stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+    })
+}
+
 pub fn run_streamed(
     settings: &Settings,
     env: &HashMap<String, String>,

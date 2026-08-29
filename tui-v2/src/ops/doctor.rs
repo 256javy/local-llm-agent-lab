@@ -59,14 +59,19 @@ impl DoctorOp {
 
         let env = std::env::vars().collect();
         if system::which("docker").is_some() {
-            let info = compose::run(&self.settings, &env, &["info"]).ok();
+            let info = compose::run_raw(&self.settings, &env, &["docker", "info"]).ok();
             let ok = info.as_ref().map(|o| o.status == 0).unwrap_or(false);
             let detail = info
                 .as_ref()
                 .map(|o| if ok { "disponible".to_string() } else { fallback(&o.stderr, "no disponible") })
                 .unwrap_or_else(|| "no disponible".into());
             checks.insert("docker-daemon".into(), CheckResult { ok, detail });
-            let version = compose::run(&self.settings, &env, &["compose", "version", "--short"]).ok();
+            let version = compose::run_raw(
+                &self.settings,
+                &env,
+                &["docker", "compose", "version", "--short"],
+            )
+            .ok();
             let ok = version.as_ref().map(|o| o.status == 0).unwrap_or(false);
             let detail = version
                 .as_ref()
@@ -124,20 +129,39 @@ impl DoctorOp {
             },
         );
 
-        let all_ok = checks.values().all(|c| c.ok);
-        let _ = sink.send(OpEvent::Done {
-            summary: if all_ok {
-                "Diagnóstico: todos los requisitos en verde".into()
-            } else {
-                "Diagnóstico: requisitos pendientes".into()
-            },
-        });
+        let failed: Vec<&str> = checks
+            .iter()
+            .filter(|(_, c)| !c.ok)
+            .map(|(name, _)| name.as_str())
+            .collect();
+        for (name, check) in &checks {
+            let mark = if check.ok { "OK" } else { "FAIL" };
+            let _ = sink.send(OpEvent::Stream(crate::compose::StreamChunk {
+                channel: if check.ok {
+                    crate::compose::StreamChannel::Stdout
+                } else {
+                    crate::compose::StreamChannel::Stderr
+                },
+                line: format!("[{mark}] {name}: {}", check.detail),
+            }));
+        }
+        let all_ok = failed.is_empty();
+        let summary = if all_ok {
+            "Diagnóstico: todos los requisitos en verde".to_string()
+        } else {
+            format!(
+                "Diagnóstico: {} requisito(s) pendiente(s) — {}",
+                failed.len(),
+                failed.join(", ")
+            )
+        };
+        let _ = sink.send(OpEvent::Done { summary: summary.clone() });
         let _ = emit(
             sink,
             OpEvent::Phase(if all_ok {
-                Phase::Done { summary: "Doctor OK".into() }
+                Phase::Done { summary }
             } else {
-                Phase::Failed { summary: "Doctor encontró requisitos pendientes".into() }
+                Phase::Failed { summary }
             }),
         );
         Ok(DoctorReport { checks, all_ok })

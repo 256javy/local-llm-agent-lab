@@ -1,8 +1,9 @@
 //! Overlay modal durante operaciones largas.
 //!
 //! Muestra la fase actual con un spinner animado y un log streamed en vivo
-//! del subproceso. Bloquea la interacción con el dashboard y se cierra
-//! automáticamente al finalizar.
+//! del subproceso. Bloquea la interacción con el dashboard. Al terminar la
+//! operación, el overlay permanece con el snapshot final hasta que el
+//! usuario lo descarte con `Esc`, `Enter` o `q`.
 
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::text::{Line, Span};
@@ -18,10 +19,29 @@ pub struct OverlayView<'a> {
     pub log_lines: &'a [String],
     pub frame_idx: usize,
     pub elapsed_secs: u64,
-    pub can_cancel: bool,
+    pub kind: OverlayKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OverlayKind {
+    Running,
+    Finished { ok: bool },
 }
 
 const FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+impl<'a> OverlayView<'a> {
+    fn can_cancel(&self) -> bool {
+        matches!(self.kind, OverlayKind::Running | OverlayKind::Finished { .. })
+    }
+
+    fn dismiss_hint(&self) -> &'static str {
+        match self.kind {
+            OverlayKind::Running => "Pulsa Esc para cancelar",
+            OverlayKind::Finished { .. } => "Pulsa Esc, Enter o q para cerrar",
+        }
+    }
+}
 
 pub fn draw(frame: &mut Frame, area: Rect, theme: &Theme, view: &OverlayView) {
     let popup = centered_rect(75, 75, area);
@@ -62,15 +82,33 @@ fn centered_rect(percent_x: u16, percent_y: u16, area: Rect) -> Rect {
 }
 
 fn draw_phase(frame: &mut Frame, area: Rect, theme: &Theme, view: &OverlayView) {
-    let spinner = FRAMES[view.frame_idx % FRAMES.len()];
     let mut lines: Vec<Line> = Vec::new();
-    lines.push(Line::from(vec![
-        Span::styled(spinner, theme.spinner),
-        Span::raw(" "),
-        Span::styled("Operación en curso", theme.accent),
-        Span::raw("  "),
-        Span::styled(format!("{:02}:{:02}", view.elapsed_secs / 60, view.elapsed_secs % 60), theme.muted),
-    ]));
+    let mut header: Vec<Span> = Vec::new();
+    match view.kind {
+        OverlayKind::Running => {
+            let spinner = FRAMES[view.frame_idx % FRAMES.len()];
+            header.push(Span::styled(spinner, theme.spinner));
+            header.push(Span::raw(" "));
+            header.push(Span::styled("Operación en curso", theme.accent));
+        }
+        OverlayKind::Finished { ok } => {
+            header.push(Span::styled(
+                if ok { "✓" } else { "✗" },
+                if ok { theme.healthy } else { theme.failed },
+            ));
+            header.push(Span::raw(" "));
+            header.push(Span::styled(
+                if ok { "Operación finalizada" } else { "Operación fallida" },
+                theme.accent,
+            ));
+        }
+    }
+    header.push(Span::raw("  "));
+    header.push(Span::styled(
+        format!("{:02}:{:02}", view.elapsed_secs / 60, view.elapsed_secs % 60),
+        theme.muted,
+    ));
+    lines.push(Line::from(header));
     if let Some(phase) = view.phase {
         lines.push(Line::from(vec![
             Span::styled("Fase:      ", theme.accent),
@@ -81,8 +119,11 @@ fn draw_phase(frame: &mut Frame, area: Rect, theme: &Theme, view: &OverlayView) 
             Span::styled(phase_detail(phase), theme.base),
         ]));
     }
-    if view.can_cancel {
-        lines.push(Line::from(Span::styled("Pulsa Esc para cancelar", theme.muted)));
+    if view.can_cancel() {
+        lines.push(Line::from(Span::styled(
+            view.dismiss_hint(),
+            theme.muted,
+        )));
     }
     let paragraph = Paragraph::new(lines).wrap(Wrap { trim: false });
     frame.render_widget(paragraph, area);
