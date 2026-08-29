@@ -49,6 +49,19 @@
 ## Fase 5 — Catálogo
 
 - [x] Perfil experimental Gemma 4 26B-A4B.
+- [ ] Tras finalizar `tui-v2`, incorporar y validar como perfil experimental Gemma 4 v2 Q6_K (`yuxinlu1/gemma-4-12B-agentic-fable5-composer2.5-v2-3.5x-tau2-GGUF`, revisión `190a31365a6b80a692349be34ccdac730cad4fe4`, archivo `gemma4-v2-Q6_K.gguf`); partir de 16k de contexto, GPU completa, Flash Attention y Jinja, y registrar smoke, VRAM y tool calling.
 - [ ] Adaptador LiteRT-LM.
 - [ ] Canales stable/candidate/experimental.
 - [~] Reporte explícito de almacenamiento; limpieza diferida por seguridad.
+
+## Fase 6 — TUI v2
+
+- [x] Reimplementar primitivas en Rust (settings, env, profiles, state, gpu,
+      port, http, compose).
+- [x] Comandos start, stop, switch, status, profiles, health, logs, doctor
+      con paridad 1:1 con `bin/llm-lab`.
+- [x] Dashboard de 2 paneles (estado + lista de perfiles) con refresco.
+- [x] Overlay con spinner animado y log streamed de `docker compose`.
+- [x] Diálogo de confirmación para start, switch y stop.
+- [x] Footer con atajos contextuales y pantalla de ayuda.
+- [x] Tests de integración + snapshot del dashboard con `TestBackend`.

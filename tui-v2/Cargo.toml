@@ -1,0 +1,26 @@
+[package]
+name = "tui-v2"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "tui_v2"
+path = "src/lib.rs"
+
+[[bin]]
+name = "tui-v2"
+path = "src/main.rs"
+
+[dependencies]
+ratatui = "0.28"
+crossterm = "0.28"
+color-eyre = "0.6"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+fd-lock = "3"
+nix = { version = "0.27", default-features = false, features = ["fs"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

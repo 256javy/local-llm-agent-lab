@@ -34,6 +34,28 @@ ajenos.
 Si otro proceso usa VRAM, `doctor` lo refleja mediante el uso global. El MVP no
 termina procesos GPU ni garantiza que el modelo quepa si existe otra carga.
 
+## TUI
+
+Existen dos TUI equivalentes:
+
+- `tui/main.py` (Python + cmd) — clásica.
+- `tui-v2/` (Rust + ratatui) — reimplementa la misma lógica con mejor
+  feedback visual: dashboard 2 paneles, overlay con spinner durante
+  operaciones largas, log en vivo del subproceso y footer contextual.
+
+Ambas comparten el lock sobre `state.json` con la CLI, por lo que es
+seguro alternar. Para arrancarlas:
+
+```bash
+./tui/run_tui.sh
+./tui-v2/run_tui.sh
+```
+
+Teclas comunes en la TUI Rust: `↑/↓` navega, `Enter` arranca, `s` cambia,
+`x` detiene, `d` marca como default, `r` refresca, `h` health, `l` logs,
+`L` logs en vivo, `D` doctor, `?` ayuda, `q` salir. Las acciones
+destructivas muestran un diálogo de confirmación.
+
 ## Datos
 
 El directorio predeterminado es `~/.local/share/local-llm-agent-lab`. Para

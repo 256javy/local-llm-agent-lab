@@ -37,6 +37,26 @@ Cambiar de modelo libera primero el perfil activo:
 
 `stop` no borra modelos ni caches.
 
+## TUI
+
+Hay dos TUI equivalentes en cobertura. La primera (`tui/`, Python + cmd) y
+la segunda (`tui-v2/`, Rust + ratatui) comparten la misma lógica expuesta
+por `bin/llm-lab`:
+
+- `start` / `stop` / `switch <perfil>`
+- `status`, `health`, `profiles`, `doctor`
+- `logs` (`--tail`, `--follow`)
+- marcado del perfil por defecto
+
+Ambas usan el lock de control sobre `state.json`, por lo que pueden
+alternarse con la CLI sin corromper el estado. La TUI Rust muestra un
+overlay con spinner y log en vivo durante las operaciones largas.
+
+```bash
+./tui/run_tui.sh     # TUI clásica en Python
+./tui-v2/run_tui.sh  # TUI Rust con ratatui (compila en primer uso)
+```
+
 ## Clientes
 
 La CLI genera configuraciones sin sobrescribir archivos existentes:
