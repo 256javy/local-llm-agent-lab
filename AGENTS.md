@@ -25,7 +25,7 @@ y `docs/decisions/`. El estado vivo de implementación se mantiene en
 ## Validación
 
 ```bash
-python3 -m unittest discover -s tests -v
+PYTHONPATH=src python3 -m unittest discover -s tests -v
 ./bin/llm-lab profiles
 ./bin/llm-lab config show --effective
 ./bin/llm-lab doctor
