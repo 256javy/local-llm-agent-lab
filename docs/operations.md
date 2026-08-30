@@ -42,23 +42,18 @@ termina procesos GPU ni garantiza que el modelo quepa si existe otra carga.
 
 ## TUI
 
-Existen dos TUI equivalentes:
+La TUI predeterminada vive en `tui/` y usa Rust con ratatui. Comparte el lock
+sobre `state.json` con la CLI, por lo que es seguro alternarlas. Mantiene la
+telemetría persistente a la izquierda y un panel derecho que alterna entre
+perfiles, operaciones y logs en vivo, con spinner y footer contextual.
 
-- `tui/main.py` (Python + cmd) — clásica.
-- `tui-v2/` (Rust + ratatui) — reimplementa la misma lógica con mejor
-  feedback visual: telemetría persistente a la izquierda y un panel derecho
-  que alterna entre perfiles, operaciones y logs en vivo, con spinner y
-  footer contextual.
-
-Ambas comparten el lock sobre `state.json` con la CLI, por lo que es
-seguro alternar. Para arrancarlas:
+Para arrancarla:
 
 ```bash
 ./tui/run_tui.sh
-./tui-v2/run_tui.sh
 ```
 
-Teclas comunes en la TUI Rust: `↑/↓` navega, `Enter` arranca, `s` cambia,
+Teclas: `↑/↓` navega, `Enter` arranca, `s` cambia,
 `x` detiene, `d` marca como default, `r` refresca, `h` health, `l` logs,
 `L` logs en vivo, `D` doctor, `?` ayuda, `q` salir. Las acciones
 destructivas muestran un diálogo de confirmación.

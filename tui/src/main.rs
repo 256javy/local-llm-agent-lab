@@ -1,4 +1,4 @@
-//! Punto de entrada de la TUI v2 (Rust + ratatui + crossterm).
+//! Punto de entrada de la TUI (Rust + ratatui + crossterm).
 //!
 //! Carga la configuración del laboratorio, abre la terminal alternativa,
 //! delega todo el ciclo de vida al `App`, y restaura la terminal al salir.
@@ -7,8 +7,8 @@ use std::path::PathBuf;
 
 use color_eyre::Result;
 
-use tui_v2::app;
-use tui_v2::config;
+use llm_lab_tui::app;
+use llm_lab_tui::config;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 

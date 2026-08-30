@@ -14,14 +14,14 @@ bibliotecas ni modelos que cada usuario decida descargar.
 
 ## TUI Rust
 
-Dependencias directas declaradas en `tui-v2/Cargo.toml`:
+Dependencias directas declaradas en `tui/Cargo.toml`:
 
 - ratatui y crossterm — MIT.
 - color-eyre, serde, serde_json, chrono, fd-lock y unicode-width — MIT o
   Apache-2.0.
 - nix — MIT.
 
-`tui-v2/Cargo.lock` conserva las versiones exactas y el árbol transitivo. Las
+`tui/Cargo.lock` conserva las versiones exactas y el árbol transitivo. Las
 notificaciones completas de una distribución binaria deben generarse a partir
 de ese lockfile, incluyendo dependencias transitivas.
 
