@@ -66,21 +66,26 @@ Validación del 2026-08-30 sobre la misma RTX 5060 Ti y driver 580.173.02:
 - Build correcto con toolkit CUDA 13.0.88 y target efectivo `sm_120a`; no se
   observó el warning de targets GPU anteriores a `sm_75`.
 - Las instancias CUDA `mxfp4` y `nvfp4` compilaron correctamente.
-- Gemma 12B y Qwen pasaron health, smoke, tool calling y performance; MTP quedó
-  activo en ambos.
+- Gemma 12B y Qwen 3.6 pasaron health, smoke, tool calling y performance; MTP
+  quedó activo en ambos.
 - Los GGUF existentes se reutilizaron desde el volumen persistente, sin nuevas
   descargas de modelos.
 - El mismo build de llama.cpp se reutilizó íntegramente entre perfiles.
 
 | Perfil | VRAM observada | Decode mediano corto | Aceptación draft acumulada |
 |---|---:|---:|---:|
-| Gemma 4 12B QAT + MTP | 8.934 MiB | 108,68 tok/s | 48/48 |
-| Qwen 3.6 35B-A3B Q2 + MTP | 14.112 MiB | 183,31 tok/s | 39/45 |
+| Gemma 4 12B QAT + MTP | 9.039 MiB | 123,25 tok/s | 48/48 |
+| Qwen 3.6 35B-A3B Q2 + MTP | 14.137 MiB | 196,40 tok/s | 39/45 |
+| Qwen 3.8 27B IQ3_XXS + MTP | 13.063 MiB | 59,95 tok/s | 33/36 |
 
 Estas cifras proceden del fixture corto `performance`, con cache de prompt en
-las repeticiones, y no sustituyen un benchmark de contexto largo. Gemma 26B no
-estaba descargado y conserva pendiente su validación pesada para evitar una
-descarga implícita de varios GiB.
+las repeticiones, y no sustituyen un benchmark de contexto largo. El
+2026-08-30 se repitieron además `smoke`, `performance` y `agent` para los tres
+modelos descargados: las nueve suites pasaron y las respuestas reportaron
+`system_fingerprint: b1-57291f2`. Las tres imágenes declararon
+`CUDA_VERSION=13.0.3`; al terminar, el servidor quedó detenido y la VRAM volvió
+a 968 MiB. Gemma 26B no está descargado y conserva pendiente su validación
+pesada para evitar una descarga implícita de varios GiB.
 
 ## Baseline adicional de Qwen 3.8 sobre el stack anterior
 
@@ -96,6 +101,7 @@ La respuesta del servidor expuso `system_fingerprint: b1-093adb2`; además, la
 imagen utilizada declaró `CUDA_VERSION=12.8.1`. Estas evidencias prevalecen
 sobre la revisión copiada del archivo de perfil al JSON del benchmark.
 
-Qwen 3.8 debe reconstruirse con la imagen vigente y repetir las tres suites
-antes de incorporarse a la tabla de CUDA 13. Gemma 26B sigue siendo el único
-GGUF del catálogo que no está descargado.
+Este baseline se conserva para comparar compatibilidad y rendimiento. Qwen 3.8
+fue reconstruido después con el runtime vigente y sus resultados CUDA 13 se
+incorporaron a la tabla anterior. Gemma 26B sigue siendo el único GGUF del
+catálogo que no está descargado.

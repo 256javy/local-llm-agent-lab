@@ -17,12 +17,12 @@
 ## Fase 1 — Servidor y clientes
 
 - [x] Adaptador llama.cpp reproducible y fijado a `sm_120`.
-- [~] Runtime actualizado a CUDA 13.0.3 y llama.cpp b10689; Gemma 12B y
-      Qwen 3.6 pasaron build, smoke, tool calling, MTP y performance sobre
-      GPU. Qwen 3.8 27B pasó las tres suites sobre el stack anterior
-      CUDA 12.8.1/llama.cpp 093adb2 y tiene pendiente repetirlas tras reconstruir
-      su imagen con el runtime vigente. Gemma 26B sigue sin descargarse y queda
-      fuera de esta ronda de validación pesada.
+- [x] Runtime actualizado a CUDA 13.0.3 y llama.cpp b10689; los tres modelos
+      descargados —Gemma 12B, Qwen 3.6 y Qwen 3.8 27B— pasaron build, health,
+      smoke, tool calling, MTP, performance y agent sobre GPU. Se conserva el
+      baseline adicional de Qwen 3.8 sobre CUDA 12.8.1/llama.cpp 093adb2.
+      Gemma 26B sigue sin descargarse y queda fuera de esta ronda de validación
+      pesada.
 - [x] Publicación exclusiva en `127.0.0.1:18080`.
 - [x] Health gate y logs.
 - [x] Generadores seguros de configuración Pi/OpenCode.
@@ -48,7 +48,7 @@
 ## Fase 4 — Benchmarks
 
 - [x] Harness y fixtures iniciales.
-- [x] Suite reproducible de performance inicial para ambos perfiles.
+- [x] Suite reproducible de performance para los tres modelos descargados.
 - [~] Fixture agentic de tool calling validado; falta Pi end-to-end.
 - [ ] Comparar llama.cpp, Ollama y LiteRT-LM con condiciones equivalentes.
 
