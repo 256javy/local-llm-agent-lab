@@ -1,0 +1,54 @@
+{
+  "id": "qwen-3.8-27b-iq3xxs-mtp",
+  "displayName": "Qwen 3.8 27B IQ3_XXS + MTP",
+  "description": "Qwen 3.8 27B dense, Unsloth UD-IQ3_XXS GGUF, optimizado para una NVIDIA RTX 5060 Ti 16 GB: CUDA con offload completo de GPU, Flash Attention, caché KV Q4_0 y MTP especulativo integrado. Solo texto (no se declara mmproj).",
+  "runtime": {
+    "adapter": "llama-cpp",
+    "repository": "https://github.com/ggml-org/llama.cpp.git",
+    "revision": "093adb242e6d205d06979a390d4f4f690dd87bf1",
+    "cmakeArgs": [
+      "-DGGML_CUDA=ON",
+      "-DGGML_NATIVE=OFF",
+      "-DBUILD_SHARED_LIBS=OFF",
+      "-DCMAKE_CUDA_ARCHITECTURES=120"
+    ]
+  },
+  "model": {
+    "repository": "unsloth/Qwen3.8-27B-GGUF",
+    "file": "Qwen3.8-27B-UD-IQ3_XXS.gguf",
+    "revision": "4ca720788d1e01f1bff70c033e0d0028fd02e502",
+    "sha256": null
+  },
+  "server": {
+    "contextSize": 32768,
+    "parallel": 1,
+    "arguments": [
+      "-ngl",
+      "99",
+      "-fa",
+      "on",
+      "-ctk",
+      "q4_0",
+      "-ctv",
+      "q4_0",
+      "--spec-type",
+      "draft-mtp",
+      "--spec-draft-n-max",
+      "3",
+      "--jinja"
+    ]
+  },
+  "requirements": {
+    "minimumVramGiB": 16,
+    "recommendedVramGiB": 16
+  },
+  "capabilities": {
+    "chatCompletions": true,
+    "responses": true,
+    "toolCalling": true,
+    "reasoning": true,
+    "vision": false,
+    "audio": false
+  },
+  "status": "experimental"
+}

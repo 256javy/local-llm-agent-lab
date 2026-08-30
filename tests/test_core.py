@@ -38,7 +38,7 @@ class EnvironmentTests(unittest.TestCase):
 class ProfileTests(unittest.TestCase):
     def test_repository_profiles_are_valid(self) -> None:
         profiles = load_profiles(ROOT)
-        self.assertEqual(set(profiles), {"gemma-4-12b-qat-mtp", "gemma-4-26b-a4b-quality", "qwen-3.6-moe-2bit"})
+        self.assertEqual(set(profiles), {"gemma-4-12b-qat-mtp", "gemma-4-26b-a4b-quality", "qwen-3.6-moe-2bit", "qwen-3.8-27b-iq3xxs-mtp"})
 
     def test_missing_fields_are_reported(self) -> None:
         errors = validate_profile({"id": "broken"})
