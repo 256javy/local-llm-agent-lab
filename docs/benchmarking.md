@@ -1,5 +1,16 @@
 # Benchmarking
 
+## Tres capas que no se mezclan
+
+- `llm-lab bench <perfil>` ejecutará `llama-bench` dentro del runtime: mide
+  inferencia nativa, no calidad ni speculative decoding del servidor.
+- `llm-lab benchmark <perfil> --suite ...` usa `llama-server` por HTTP y mide
+  fixtures controlados del perfil servido.
+- `llm-lab trace ...` analizará sesiones reales de Pi/OpenCode, sus herramientas,
+  contexto, verificación e intervención humana.
+
+Un resultado de una capa no sustituye a los otros dos.
+
 Con un perfil saludable:
 
 ```bash
@@ -41,9 +52,29 @@ son gates operativos del proyecto; no reemplazan benchmarks académicos.
 
 ## Comparaciones estándar
 
-- Usa `llama-bench` de la misma revisión fijada de llama.cpp para prompt
-  processing y generación pura con `pp512`, `pp2048`, `pp8192`, `tg128` y
-  `tg512`, tanto en frío como en caliente.
+- `llama-bench` debe compilarse junto a `llama-server`, reutilizar el GGUF ya
+  preparado y guardar su JSON raw bajo `benchmark-results/llama-bench/`.
+  La matriz central es `pp512`, `pp2048`, `pp8192`, `tg128`, `tg512` y
+  `tg128` con depth 8192/16384, cinco repeticiones y recorte por el
+  `server.contextSize` del perfil.
+- La salida estructurada upstream contiene commit/build, CPU/GPU/backends,
+  metadata del modelo, batch/ubatch, KV, GPU layers, flash attention, prompt,
+  generation, depth, timestamps, media y desviación. El manifest local añadirá
+  profile ID y hash del GGUF cuando calcularlo sea razonable. No se parseará la
+  tabla Markdown si `-o json` está disponible.
+- Solo se traducen argumentos compatibles (`ngl`, `fa`, `ctk`, `ctv`, `sm`,
+  `mg` y mmap si aplica). Sampling, Jinja, `--spec-type draft-mtp` y
+  `--spec-draft-n-max` son del servidor y no deben aparecer como rendimiento
+  MTP de `llama-bench`.
+- Una ejecución normal con warmup, `--no-warmup` y el arranque frío externo de
+  proceso/modelo son mediciones diferentes. La primera integración no necesita
+  medir cold start.
+
+Referencia de viabilidad: la
+[documentación oficial de llama-bench](https://github.com/ggml-org/llama.cpp/blob/master/tools/llama-bench/README.md)
+documenta JSON/JSONL, cinco repeticiones predeterminadas, depth, tipos KV,
+flash attention y la metadata anterior. Antes de implementar se debe comprobar
+la ayuda de la revisión fijada b10689, porque upstream puede cambiar flags.
 - Usa `lm-evaluation-harness` contra el endpoint OpenAI-compatible para IFEval,
   GSM8K, ARC Challenge y una muestra fijada de MMLU-Pro.
 - Usa BFCL para tool calling y HumanEval+/MBPP+ para código ejecutable.
