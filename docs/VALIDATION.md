@@ -53,7 +53,7 @@ archivo draft externo empleado por Gemma.
 ## Upgrade CUDA 13 y llama.cpp
 
 El runtime vigente fija CUDA 13.0.3 y llama.cpp `b10689`, revisión
-`57291f2644af8c9df0dd8d44395881c5bdcf0ecd`, para los tres perfiles. Se mantiene
+`57291f2644af8c9df0dd8d44395881c5bdcf0ecd`, para los cuatro perfiles. Se mantiene
 `CMAKE_CUDA_ARCHITECTURES=120`; Qwen conserva `draft-mtp` con el MTP embebido y
 Gemma conserva su modelo draft separado. La UI embebida y su descarga mutable
 están deshabilitadas porque el servidor solo publica la API local. Los
@@ -81,3 +81,21 @@ Estas cifras proceden del fixture corto `performance`, con cache de prompt en
 las repeticiones, y no sustituyen un benchmark de contexto largo. Gemma 26B no
 estaba descargado y conserva pendiente su validación pesada para evitar una
 descarga implícita de varios GiB.
+
+## Baseline adicional de Qwen 3.8 sobre el stack anterior
+
+Qwen 3.8 27B IQ3_XXS se descargó y pasó las suites `smoke`, `performance` y
+`agent` el 2026-08-30, reutilizando accidentalmente una imagen construida con
+CUDA 12.8.1 y la revisión anterior de llama.cpp `093adb2`. El resultado es útil
+como baseline de compatibilidad del modelo y confirma chat, tool calling y MTP,
+pero no valida el runtime declarado actualmente por el perfil.
+
+La ejecución observó 13.176 MiB de VRAM, 56,54 tok/s de decode mediano en el
+fixture corto de performance y 11/12 tokens draft aceptados en cada repetición.
+La respuesta del servidor expuso `system_fingerprint: b1-093adb2`; además, la
+imagen utilizada declaró `CUDA_VERSION=12.8.1`. Estas evidencias prevalecen
+sobre la revisión copiada del archivo de perfil al JSON del benchmark.
+
+Qwen 3.8 debe reconstruirse con la imagen vigente y repetir las tres suites
+antes de incorporarse a la tabla de CUDA 13. Gemma 26B sigue siendo el único
+GGUF del catálogo que no está descargado.

@@ -12,6 +12,12 @@ runtime/modelo, argumentos efectivos, fixture, aserciones, duraciones, timings
 del servidor y respuestas completas para auditoría funcional. El comando falla
 si una respuesta no satisface su aserción.
 
+La revisión de runtime del JSON procede del perfil declarativo. Para auditar un
+upgrade de la imagen también se debe comprobar la variable `CUDA_VERSION` de la
+imagen y el `system_fingerprint` devuelto por el servidor; una etiqueta Docker
+existente puede conservar un build anterior aunque el perfil ya apunte a otra
+revisión.
+
 Suites disponibles:
 
 - `smoke`: chat exacto y llamada de herramienta.

@@ -19,9 +19,10 @@
 - [x] Adaptador llama.cpp reproducible y fijado a `sm_120`.
 - [~] Runtime actualizado a CUDA 13.0.3 y llama.cpp b10689; Gemma 12B y
       Qwen 3.6 pasaron build, smoke, tool calling, MTP y performance sobre
-      GPU. Falta descargar y revalidar los perfiles experimentales Gemma 26B
-      y Qwen 3.8 27B; este último llegó en main con la revisión anterior de
-      llama.cpp y quedó alineado al runtime de la rama.
+      GPU. Qwen 3.8 27B pasó las tres suites sobre el stack anterior
+      CUDA 12.8.1/llama.cpp 093adb2 y tiene pendiente repetirlas tras reconstruir
+      su imagen con el runtime vigente. Gemma 26B sigue sin descargarse y queda
+      fuera de esta ronda de validación pesada.
 - [x] Publicación exclusiva en `127.0.0.1:18080`.
 - [x] Health gate y logs.
 - [x] Generadores seguros de configuración Pi/OpenCode.

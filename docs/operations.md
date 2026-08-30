@@ -71,3 +71,15 @@ No borres volúmenes o caches como parte de una recuperación ordinaria.
 Reconstruir la imagen para actualizar CUDA o llama.cpp tampoco borra esos
 artefactos: si el perfil conserva el mismo identificador y nombre de archivo,
 el entrypoint reutiliza el GGUF existente bajo `models/<perfil>/`.
+
+Después de un upgrade, verifica la imagen concreta de cada perfil antes de
+atribuirle resultados al nuevo stack. Las etiquetas son independientes y un
+perfil que no se haya reconstruido puede seguir apuntando a una imagen previa:
+
+```bash
+docker image inspect local/local-llm-agent-lab:<perfil> \
+  --format '{{range .Config.Env}}{{println .}}{{end}}' | grep '^CUDA_VERSION='
+```
+
+El `system_fingerprint` de las respuestas y los logs de arranque permiten
+corroborar también la revisión efectiva de llama.cpp.
