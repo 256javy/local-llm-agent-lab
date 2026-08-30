@@ -70,7 +70,9 @@ fn dashboard_renders_without_panic() {
         .map(|c| c.symbol())
         .collect::<Vec<_>>()
         .join("");
-    assert!(text.contains("Local LLM Agent Lab") || text.contains("████"));
+    assert!(
+        text.contains("Local LLM Agent Lab") || text.contains("▀") || text.contains("▄")
+    );
     assert!(text.contains("Perfiles disponibles") || text.contains("PERFILES DISPONIBLES"));
     assert!(text.contains("Estado del lab"));
     assert!(text.contains("Perfil activo"));
@@ -117,9 +119,14 @@ fn render_header_text(width: u16, height: u16) -> String {
 #[test]
 fn header_wide_uses_ascii_banner_and_operational_metadata() {
     let out = render_header_text(140, 32);
-    assert!(out.contains("████"));
+    assert!(out.contains("▀") || out.contains("▄"));
     assert!(out.contains("http://127.0.0.1:18080/v1"));
     assert!(out.contains("HEALTHY"));
+    assert_eq!(
+        tui_v2::ui::header::preferred_height(ratatui::layout::Rect::new(0, 0, 140, 32)),
+        6
+    );
+    assert!(out.chars().take(140).all(|character| character == ' '));
 }
 
 #[test]
@@ -127,7 +134,7 @@ fn header_narrow_keeps_compact_branding() {
     let out = render_header_text(80, 24);
     assert!(out.contains("Local LLM Agent Lab"));
     assert!(out.contains("healthy"));
-    assert!(!out.contains("████"));
+    assert!(!out.contains("▀") && !out.contains("▄"));
 }
 
 #[test]

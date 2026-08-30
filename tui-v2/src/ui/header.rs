@@ -10,7 +10,7 @@ use crate::ui::theme::Theme;
 
 const BANNER_MIN_WIDTH: u16 = 102;
 const BANNER_MIN_TERMINAL_HEIGHT: u16 = 28;
-const BANNER_HEIGHT: u16 = 9;
+const BANNER_HEIGHT: u16 = 6;
 const COMPACT_HEIGHT: u16 = 4;
 
 const PROJECT_NAME: &str = "LOCAL LLM AGENT LAB";
@@ -66,10 +66,12 @@ fn draw_banner(
     active_profile: Option<&str>,
 ) {
     let now = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
-    let mut lines: Vec<Line> = solid_banner(PROJECT_NAME)
-        .into_iter()
-        .map(|line| Line::from(Span::styled(line, theme.title)).alignment(Alignment::Center))
-        .collect();
+    let mut lines = vec![Line::from("")];
+    lines.extend(
+        solid_banner(PROJECT_NAME)
+            .into_iter()
+            .map(|line| Line::from(Span::styled(line, theme.title)).alignment(Alignment::Center)),
+    );
     lines.push(metadata_line(theme, version, endpoint, active_profile));
     lines.push(Line::from(vec![
         Span::styled(
@@ -129,17 +131,39 @@ fn metadata_line<'a>(
 }
 
 fn solid_banner(text: &str) -> Vec<String> {
-    let mut rows = vec![String::new(); 5];
+    let mut rows = vec![String::new(); 3];
     for character in text.chars() {
-        let glyph = solid_glyph(character);
+        let glyph = compressed_glyph(character);
         for (row, segment) in rows.iter_mut().zip(glyph) {
             if !row.is_empty() {
                 row.push(' ');
             }
-            row.push_str(segment);
+            row.push_str(&segment);
         }
     }
     rows
+}
+
+fn compressed_glyph(character: char) -> [String; 3] {
+    let source = solid_glyph(character);
+    [
+        merge_pixel_rows(source[0], source[1]),
+        merge_pixel_rows(source[2], source[3]),
+        merge_pixel_rows(source[4], "    "),
+    ]
+}
+
+fn merge_pixel_rows(upper: &str, lower: &str) -> String {
+    upper
+        .chars()
+        .zip(lower.chars())
+        .map(|(top, bottom)| match (top == '█', bottom == '█') {
+            (true, true) => '█',
+            (true, false) => '▀',
+            (false, true) => '▄',
+            (false, false) => ' ',
+        })
+        .collect()
 }
 
 fn solid_glyph(character: char) -> [&'static str; 5] {

@@ -11,11 +11,9 @@ http://127.0.0.1:18080/v1
 
 ## Estado
 
-El MVP está implementado y validado en una RTX 5060 Ti de 16 GB con Gemma 4
-12B y Qwen 3.6 35B-A3B. Consulta [`docs/VALIDATION.md`](docs/VALIDATION.md) para
-la evidencia y [`docs/BACKLOG.md`](docs/BACKLOG.md) para las extensiones
-pendientes. El alcance completo está definido en
-[`PRD_LOCAL_LLM_AGENT_LAB.md`](PRD_LOCAL_LLM_AGENT_LAB.md).
+El runtime está implementado y validado en una RTX 5060 Ti de 16 GB con Gemma
+4 12B y Qwen 3.6 35B-A3B. Consulta la [documentación](docs/README.md) para la
+arquitectura, operación, validación y extensiones pendientes.
 
 ## Inicio rápido
 
@@ -49,8 +47,9 @@ por `bin/llm-lab`:
 - marcado del perfil por defecto
 
 Ambas usan el lock de control sobre `state.json`, por lo que pueden
-alternarse con la CLI sin corromper el estado. La TUI Rust muestra un
-overlay con spinner y log en vivo durante las operaciones largas.
+alternarse con la CLI sin corromper el estado. La TUI Rust mantiene la
+telemetría a la izquierda y usa el panel derecho para alternar entre perfiles,
+logs y resultados de operaciones sin ocultar el dashboard.
 
 ```bash
 ./tui/run_tui.sh     # TUI clásica en Python

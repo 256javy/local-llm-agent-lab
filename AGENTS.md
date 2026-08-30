@@ -6,8 +6,8 @@ Este repositorio administra runtimes locales de LLM en Docker para clientes que
 se ejecutan directamente en el host, inicialmente Pi Coding Agent y OpenCode.
 El contrato público predeterminado es `http://127.0.0.1:18080/v1`.
 
-El alcance y las decisiones de producto se encuentran en
-`PRD_LOCAL_LLM_AGENT_LAB.md`. El estado vivo de implementación se mantiene en
+La arquitectura y las decisiones aceptadas se encuentran en `docs/architecture.md`
+y `docs/decisions/`. El estado vivo de implementación se mantiene en
 `docs/BACKLOG.md`.
 
 ## Reglas
@@ -25,7 +25,7 @@ El alcance y las decisiones de producto se encuentran en
 ## Validación
 
 ```bash
-python3 -m unittest discover -s tests -v
+PYTHONPATH=src python3 -m unittest discover -s tests -v
 ./bin/llm-lab profiles
 ./bin/llm-lab config show --effective
 ./bin/llm-lab doctor

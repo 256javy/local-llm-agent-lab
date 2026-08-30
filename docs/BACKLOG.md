@@ -8,7 +8,7 @@
 
 ## Fase 0 — Bootstrap
 
-- [x] Crear repositorio y mover el PRD.
+- [x] Crear repositorio y documentar el alcance inicial.
 - [x] Añadir README, AGENTS.md, licencia y `.gitignore`.
 - [x] Definir esquema y registro inicial de perfiles.
 - [x] Implementar CLI y pruebas sin GPU.
@@ -63,8 +63,8 @@
       port, http, compose).
 - [x] Comandos start, stop, switch, status, profiles, health, logs, doctor
       con paridad 1:1 con `bin/llm-lab`.
-- [x] Dashboard de 2 paneles (estado + lista de perfiles) con refresco.
-- [x] Overlay con spinner animado y log streamed de `docker compose`.
+- [x] Dashboard de 2 paneles con telemetría persistente y contenido contextual.
+- [x] Panel derecho para perfiles, spinner y log streamed de `docker compose`.
 - [x] Diálogo de confirmación para start, switch y stop.
 - [x] Footer con atajos contextuales y pantalla de ayuda.
 - [x] Tests de integración + snapshot del dashboard con `TestBackend`.
