@@ -72,6 +72,8 @@ def command_config(settings: Settings, args: argparse.Namespace) -> None:
         "port": settings.port,
         "endpoint": settings.endpoint,
         "dataDir": str(settings.data_dir),
+        "archiveDir": str(settings.archive_dir) if settings.archive_dir else None,
+        "cudaArchitecturesOverride": settings.cuda_architectures or None,
         "defaultProfile": settings.default_profile,
         "apiKeyConfigured": bool(settings.api_key),
         "startTimeout": settings.start_timeout,
@@ -311,11 +313,41 @@ def directory_size(path: pathlib.Path) -> int:
 
 
 def command_storage(settings: Settings, args: argparse.Namespace) -> None:
+    if args.storage_action in {"archive", "restore"}:
+        profile = get_profile(settings, args.profile)
+        if not settings.archive_dir:
+            raise LabError("Configura LLM_LAB_ARCHIVE_DIR antes de archivar o restaurar", 2)
+        active_root = (settings.data_dir / "models").resolve()
+        archive_root = (settings.archive_dir / "models").resolve()
+        if active_root == archive_root or active_root in archive_root.parents or archive_root in active_root.parents:
+            raise LabError("El archivo frío debe estar fuera del directorio de datos activo", 2)
+        source_root, destination_root = (
+            (active_root, archive_root) if args.storage_action == "archive" else (archive_root, active_root)
+        )
+        source = source_root / profile["id"]
+        destination = destination_root / profile["id"]
+        with control_lock(settings):
+            if docker_container_running() or read_state(settings):
+                raise LabError("Detén el perfil activo antes de mover modelos", 1)
+            if not source.is_dir():
+                raise LabError(f"No existe el modelo de {profile['id']} en {source_root}", 1)
+            if destination.exists():
+                raise LabError(f"El destino ya existe: {destination}", 1)
+            destination_root.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(source), str(destination))
+        action = "Archivado" if args.storage_action == "archive" else "Restaurado"
+        print(f"{action}: {profile['id']} -> {destination}")
+        return
     entries = []
     if settings.data_dir.exists():
         for path in sorted(settings.data_dir.iterdir()):
             entries.append({"name": path.name, "path": str(path), "bytes": directory_size(path)})
-    payload = {"dataDir": str(settings.data_dir), "totalBytes": sum(item["bytes"] for item in entries), "entries": entries}
+    archived = []
+    if settings.archive_dir and (settings.archive_dir / "models").exists():
+        for path in sorted((settings.archive_dir / "models").iterdir()):
+            if path.is_dir():
+                archived.append({"name": path.name, "path": str(path), "bytes": directory_size(path)})
+    payload = {"dataDir": str(settings.data_dir), "archiveDir": str(settings.archive_dir) if settings.archive_dir else None, "totalBytes": sum(item["bytes"] for item in entries), "entries": entries, "archivedModels": archived}
     if args.json:
         print_json(payload)
         return
@@ -323,6 +355,10 @@ def command_storage(settings: Settings, args: argparse.Namespace) -> None:
     for item in entries:
         print(f"{item['bytes'] / 1024**3:8.2f} GiB  {item['name']}")
     print(f"{payload['totalBytes'] / 1024**3:8.2f} GiB  TOTAL")
+    if payload["archiveDir"]:
+        print(f"Archivo frío: {payload['archiveDir']}")
+        for item in archived:
+            print(f"{item['bytes'] / 1024**3:8.2f} GiB  {item['name']}")
 
 
 def command_pull(settings: Settings, args: argparse.Namespace) -> None:
@@ -351,7 +387,12 @@ def command_benchmark(settings: Settings, args: argparse.Namespace) -> None:
         raise LabError(f"Activa primero el perfil {profile['id']}", 1)
     script = settings.repo_dir / "benchmarks/run.py"
     profile_file = settings.repo_dir / "config" / "profiles" / f"{profile['id']}.json"
-    run([sys.executable, str(script), "--endpoint", settings.endpoint, "--profile", profile["id"], "--profile-file", str(profile_file), "--suite", args.suite], cwd=settings.repo_dir)
+    command = [sys.executable, str(script), "--endpoint", settings.endpoint, "--profile", profile["id"], "--profile-file", str(profile_file), "--suite", args.suite]
+    if args.repetitions is not None:
+        if args.repetitions < 1:
+            raise LabError("--repetitions debe ser mayor que cero", 2)
+        command.extend(["--repetitions", str(args.repetitions)])
+    run(command, cwd=settings.repo_dir)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -387,9 +428,11 @@ def build_parser() -> argparse.ArgumentParser:
     client.add_argument("--force", action="store_true", help="Permite reemplazar --output")
     benchmark = sub.add_parser("benchmark", help="Ejecuta un benchmark")
     benchmark.add_argument("profile")
-    benchmark.add_argument("--suite", choices=["smoke", "performance", "agent"], default="smoke")
+    benchmark.add_argument("--suite", choices=["smoke", "performance", "agent", "quality", "tools", "context", "soak"], default="smoke")
+    benchmark.add_argument("--repetitions", type=int, default=None)
     storage = sub.add_parser("storage", help="Inspecciona almacenamiento persistente")
-    storage.add_argument("storage_action", choices=["report"])
+    storage.add_argument("storage_action", choices=["report", "archive", "restore"])
+    storage.add_argument("profile", nargs="?")
     storage.add_argument("--json", action="store_true")
     return parser
 

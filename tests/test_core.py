@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from llm_lab.core import LabError, http_json, load_profiles, load_settings, parse_env_file, port_available, validate_profile
+from llm_lab.core import LabError, compose_env, http_json, load_profiles, load_settings, parse_env_file, port_available, validate_profile
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -28,6 +28,20 @@ class EnvironmentTests(unittest.TestCase):
                 settings = load_settings(root)
             self.assertEqual(settings.port, 19001)
 
+    def test_archive_directory_is_optional_and_resolved(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            with mock.patch.dict(os.environ, {"LLM_LAB_ARCHIVE_DIR": temporary}, clear=False):
+                settings = load_settings(ROOT)
+            self.assertEqual(settings.archive_dir, pathlib.Path(temporary).resolve())
+
+    def test_cuda_architecture_override_replaces_profile_default(self) -> None:
+        with mock.patch.dict(os.environ, {"LLM_LAB_CUDA_ARCHITECTURES": "89"}, clear=False):
+            settings = load_settings(ROOT)
+        profile = load_profiles(ROOT)["gemma-4-12b-qat-mtp"]
+        arguments = compose_env(settings, profile)["LLM_LAB_RUNTIME_CMAKE_ARGS"]
+        self.assertIn("-DCMAKE_CUDA_ARCHITECTURES=89", arguments)
+        self.assertNotIn("-DCMAKE_CUDA_ARCHITECTURES=120", arguments)
+
     def test_invalid_port_fails(self) -> None:
         with mock.patch.dict(os.environ, {"LLM_LAB_PORT": "99999"}):
             with self.assertRaises(LabError) as raised:
@@ -39,6 +53,22 @@ class ProfileTests(unittest.TestCase):
     def test_repository_profiles_are_valid(self) -> None:
         profiles = load_profiles(ROOT)
         self.assertEqual(set(profiles), {"gemma-4-12b-qat-mtp", "gemma-4-26b-a4b-quality", "qwen-3.6-moe-2bit", "qwen-3.8-27b-iq3xxs-mtp"})
+
+    def test_repository_profiles_pin_llama_cpp_for_sm120(self) -> None:
+        profiles = load_profiles(ROOT)
+        revisions = {profile["runtime"]["revision"] for profile in profiles.values()}
+        self.assertEqual(revisions, {"57291f2644af8c9df0dd8d44395881c5bdcf0ecd"})
+        cmake_args = {tuple(profile["runtime"]["cmakeArgs"]) for profile in profiles.values()}
+        self.assertEqual(len(cmake_args), 1)
+        for profile in profiles.values():
+            self.assertIn("-DCMAKE_CUDA_ARCHITECTURES=120", profile["runtime"]["cmakeArgs"])
+
+    def test_docker_runtime_uses_cuda_13(self) -> None:
+        dockerfile = (ROOT / "docker/llama-cpp/Dockerfile").read_text(encoding="utf-8")
+        self.assertIn("nvidia/cuda:13.0.3-devel-ubuntu24.04", dockerfile)
+        self.assertIn("nvidia/cuda:13.0.3-runtime-ubuntu24.04", dockerfile)
+        self.assertIn("LLAMA_USE_PREBUILT_UI=OFF", dockerfile)
+        self.assertNotIn("LLAMA_BUILD_WEBUI", dockerfile)
 
     def test_missing_fields_are_reported(self) -> None:
         errors = validate_profile({"id": "broken"})

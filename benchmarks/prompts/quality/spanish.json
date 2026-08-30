@@ -1,0 +1,8 @@
+{
+  "id": "quality-spanish",
+  "messages": [{"role": "user", "content": "Corrige la oración y responde únicamente con el texto corregido: El arbol esta al lado del camion."}],
+  "max_tokens": 48,
+  "temperature": 0,
+  "chat_template_kwargs": {"enable_thinking": false},
+  "assert": {"contentEquals": "El árbol está al lado del camión."}
+}

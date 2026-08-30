@@ -5,8 +5,8 @@
   "runtime": {
     "adapter": "llama-cpp",
     "repository": "https://github.com/ggml-org/llama.cpp.git",
-    "revision": "2dff7ff8f90ce6daefd6adb097d58a4276e5dd2d",
-    "cmakeArgs": ["-DGGML_CUDA=ON", "-DGGML_NATIVE=OFF", "-DBUILD_SHARED_LIBS=OFF", "-DLLAMA_BUILD_WEBUI=OFF", "-DLLAMA_BUILD_UI=OFF", "-DCMAKE_CUDA_ARCHITECTURES=120"]
+    "revision": "57291f2644af8c9df0dd8d44395881c5bdcf0ecd",
+    "cmakeArgs": ["-DGGML_CUDA=ON", "-DGGML_NATIVE=OFF", "-DBUILD_SHARED_LIBS=OFF", "-DCMAKE_CUDA_ARCHITECTURES=120"]
   },
   "model": {
     "repository": "havenoammo/Qwen3.6-35B-A3B-MTP-GGUF",

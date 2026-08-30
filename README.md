@@ -9,10 +9,17 @@ El endpoint predeterminado es:
 http://127.0.0.1:18080/v1
 ```
 
+La configuración de referencia es una NVIDIA RTX 5060 Ti de 16 GB. Otras GPU
+NVIDIA con 16 GB pueden reutilizar los perfiles, pero deben ajustar la
+arquitectura CUDA si no son Blackwell: el perfil de referencia se compila para
+`sm_120` y puede sobrescribirse con `LLM_LAB_CUDA_ARCHITECTURES`. Tener la misma VRAM no garantiza el mismo rendimiento ni soporte de
+instrucciones; ejecuta `doctor`, build y la matriz de benchmarks antes de
+considerar un perfil validado en otro equipo.
+
 ## Estado
 
 El runtime está implementado y validado en una RTX 5060 Ti de 16 GB con Gemma
-4 12B y Qwen 3.6 35B-A3B. Consulta la [documentación](docs/README.md) para la
+4 12B, Qwen 3.6 35B-A3B y Qwen 3.8 27B. Consulta la [documentación](docs/README.md) para la
 arquitectura, operación, validación y extensiones pendientes.
 
 ## Inicio rápido
@@ -105,3 +112,15 @@ Estos artefactos nunca se versionan.
 ```bash
 ./bin/llm-lab storage report
 ```
+
+Los modelos de uso ocasional pueden archivarse en otro disco sin cambiar sus
+perfiles. Configura `LLM_LAB_ARCHIVE_DIR` y usa:
+
+```bash
+./bin/llm-lab storage archive qwen-3.8-27b-iq3xxs-mtp
+./bin/llm-lab storage restore qwen-3.8-27b-iq3xxs-mtp
+```
+
+El proyecto se distribuye bajo licencia [MIT](LICENSE). Las dependencias,
+runtimes y modelos conservan sus propias licencias; consulta
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

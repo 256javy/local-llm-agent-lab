@@ -1,0 +1,8 @@
+{
+  "id": "quality-instruction",
+  "messages": [{"role": "user", "content": "Responde exactamente con tres palabras separadas por coma, sin espacios: rojo,verde,azul"}],
+  "max_tokens": 32,
+  "temperature": 0,
+  "chat_template_kwargs": {"enable_thinking": false},
+  "assert": {"contentEquals": "rojo,verde,azul"}
+}

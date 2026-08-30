@@ -1,0 +1,9 @@
+{
+  "id": "tools-no-call",
+  "messages": [{"role": "user", "content": "Explica en una frase qué es una API. No uses herramientas."}],
+  "tools": [{"type": "function", "function": {"name": "weather", "description": "Consulta el clima.", "parameters": {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}}}],
+  "tool_choice": "auto",
+  "max_tokens": 96,
+  "temperature": 0,
+  "assert": {"noToolCall": true}
+}
