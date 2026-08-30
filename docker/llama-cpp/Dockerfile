@@ -12,6 +12,7 @@ RUN apt-get update \
     && git -C /src/llama.cpp checkout --detach FETCH_HEAD \
     && cmake -S /src/llama.cpp -B /src/llama.cpp/build -G Ninja \
        -DCMAKE_BUILD_TYPE=Release ${LLAMA_CPP_CMAKE_ARGS} \
+       -DLLAMA_BUILD_WEBUI=OFF -DLLAMA_BUILD_UI=OFF \
     && cmake --build /src/llama.cpp/build --target llama-server -j "$(nproc)"
 
 FROM nvidia/cuda:12.8.1-runtime-ubuntu24.04

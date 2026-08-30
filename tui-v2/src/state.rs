@@ -74,7 +74,6 @@ impl ControlLock {
         let path = settings.lock_file();
         let file = OpenOptions::new()
             .read(true)
-            .write(true)
             .create(true)
             .append(true)
             .open(&path)?;

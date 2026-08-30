@@ -24,6 +24,23 @@ fn load_repository_profiles() {
 }
 
 #[test]
+fn qwen_profile_preserves_cmake_arguments() {
+    let repo = repo_dir();
+    let settings = tui_v2::config::load(repo).expect("settings");
+    let profile = tui_v2::profiles::get(&settings, "qwen-3.6-moe-2bit").expect("qwen profile");
+
+    assert!(profile.runtime.cmake_args.iter().any(|arg| arg == "-DCMAKE_CUDA_ARCHITECTURES=120"));
+    assert!(profile.runtime.cmake_args.iter().any(|arg| arg == "-DLLAMA_BUILD_WEBUI=OFF"));
+    assert!(profile.runtime.cmake_args.iter().any(|arg| arg == "-DLLAMA_BUILD_UI=OFF"));
+
+    let env = tui_v2::compose::compose_env(&settings, &profile);
+    let cmake_args = env.get("LLM_LAB_RUNTIME_CMAKE_ARGS").expect("cmake args");
+    assert!(cmake_args.contains("-DCMAKE_CUDA_ARCHITECTURES=120"));
+    assert!(cmake_args.contains("-DLLAMA_BUILD_WEBUI=OFF"));
+    assert!(cmake_args.contains("-DLLAMA_BUILD_UI=OFF"));
+}
+
+#[test]
 fn status_payload_round_trip() {
     let repo = repo_dir();
     let settings = tui_v2::config::load(repo).expect("settings");

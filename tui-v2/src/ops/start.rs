@@ -55,10 +55,7 @@ impl StartOp {
 
     fn run_inner(&self, sink: &Sender<OpEvent>) -> Result<StartResult> {
         let _ = emit(sink, OpEvent::Phase(Phase::Init));
-        let _guard = match state::ControlLock::acquire(&self.settings) {
-            Ok(g) => g,
-            Err(e) => return Err(e),
-        };
+        let _guard = state::ControlLock::acquire(&self.settings)?;
         let state = state::read(&self.settings);
         let running = system::docker_container_running();
         if let Some(s) = &state {
@@ -159,14 +156,24 @@ impl Operation for StartOp {
 }
 
 fn forward_streams(proc: &mut compose::Subprocess, sink: &Sender<OpEvent>) {
+    let mut readers = Vec::new();
     if let Some(rx) = proc.stdout.take() {
-        for chunk in rx {
-            let _ = sink.send(OpEvent::Stream(chunk));
-        }
+        let sink = sink.clone();
+        readers.push(std::thread::spawn(move || {
+            for chunk in rx {
+                let _ = sink.send(OpEvent::Stream(chunk));
+            }
+        }));
     }
     if let Some(rx) = proc.stderr.take() {
-        for chunk in rx {
-            let _ = sink.send(OpEvent::Stream(chunk));
-        }
+        let sink = sink.clone();
+        readers.push(std::thread::spawn(move || {
+            for chunk in rx {
+                let _ = sink.send(OpEvent::Stream(chunk));
+            }
+        }));
+    }
+    for reader in readers {
+        let _ = reader.join();
     }
 }

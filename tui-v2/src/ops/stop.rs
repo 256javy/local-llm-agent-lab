@@ -108,14 +108,24 @@ impl Operation for StopOp {
 }
 
 fn forward_streams(proc: &mut compose::Subprocess, sink: &Sender<OpEvent>) {
+    let mut readers = Vec::new();
     if let Some(rx) = proc.stdout.take() {
-        for chunk in rx {
-            let _ = sink.send(OpEvent::Stream(chunk));
-        }
+        let sink = sink.clone();
+        readers.push(std::thread::spawn(move || {
+            for chunk in rx {
+                let _ = sink.send(OpEvent::Stream(chunk));
+            }
+        }));
     }
     if let Some(rx) = proc.stderr.take() {
-        for chunk in rx {
-            let _ = sink.send(OpEvent::Stream(chunk));
-        }
+        let sink = sink.clone();
+        readers.push(std::thread::spawn(move || {
+            for chunk in rx {
+                let _ = sink.send(OpEvent::Stream(chunk));
+            }
+        }));
+    }
+    for reader in readers {
+        let _ = reader.join();
     }
 }

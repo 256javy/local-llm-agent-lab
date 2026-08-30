@@ -88,7 +88,7 @@ fn parse_int(name: &str, default: &str, file: &HashMap<String, String>) -> Resul
 }
 
 fn expand_home(path: PathBuf) -> PathBuf {
-    if path == PathBuf::from("~") {
+    if path.as_os_str() == "~" {
         return home_dir();
     }
     if path.starts_with("~/") {

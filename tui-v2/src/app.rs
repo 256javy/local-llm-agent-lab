@@ -149,15 +149,12 @@ impl App {
         while let Ok(event) = op.rx.try_recv() {
             match event {
                 OpEvent::Stream(chunk) => {
-                    let line = match chunk {
-                        StreamChunk { channel, line } => {
-                            let prefix = match channel {
-                                crate::compose::StreamChannel::Stderr => "• ",
-                                crate::compose::StreamChannel::Stdout => "  ",
-                            };
-                            format!("{prefix}{line}")
-                        }
+                    let StreamChunk { channel, line } = chunk;
+                    let prefix = match channel {
+                        crate::compose::StreamChannel::Stderr => "• ",
+                        crate::compose::StreamChannel::Stdout => "  ",
                     };
+                    let line = format!("{prefix}{line}");
                     op.log.push(line);
                     if op.log.len() > DEFAULT_LOG_TAIL as usize {
                         let drop = op.log.len() - DEFAULT_LOG_TAIL as usize;

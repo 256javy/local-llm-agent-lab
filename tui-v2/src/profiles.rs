@@ -15,6 +15,7 @@ use serde::Deserialize;
 use crate::config::Settings;
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RuntimeSpec {
     pub adapter: String,
     pub repository: String,
