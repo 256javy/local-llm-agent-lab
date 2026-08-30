@@ -40,8 +40,9 @@ Existen dos TUI equivalentes:
 
 - `tui/main.py` (Python + cmd) — clásica.
 - `tui-v2/` (Rust + ratatui) — reimplementa la misma lógica con mejor
-  feedback visual: dashboard 2 paneles, overlay con spinner durante
-  operaciones largas, log en vivo del subproceso y footer contextual.
+  feedback visual: telemetría persistente a la izquierda y un panel derecho
+  que alterna entre perfiles, operaciones y logs en vivo, con spinner y
+  footer contextual.
 
 Ambas comparten el lock sobre `state.json` con la CLI, por lo que es
 seguro alternar. Para arrancarlas:

@@ -47,6 +47,13 @@ impl LogsOp {
         let mut child = cmd.spawn()?;
         let stdout = child.stdout.take().unwrap();
         let stderr = child.stderr.take().unwrap();
+        let _ = emit(
+            &self.sink,
+            OpEvent::Phase(Phase::Streaming {
+                tail: self.tail,
+                follow: self.follow,
+            }),
+        );
         let (tx, rx) = std::sync::mpsc::channel::<crate::compose::StreamChunk>();
         forward(stdout, tx.clone(), crate::compose::StreamChannel::Stdout);
         forward(stderr, tx, crate::compose::StreamChannel::Stderr);

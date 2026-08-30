@@ -20,6 +20,7 @@ serde_json = "1"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 fd-lock = "3"
 nix = { version = "0.27", default-features = false, features = ["fs"] }
+unicode-width = "0.1"
 
 [profile.release]
 lto = "thin"

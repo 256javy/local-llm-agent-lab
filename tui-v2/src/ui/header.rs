@@ -1,31 +1,160 @@
-//! Header con branding, reloj y estado resumido.
+//! Header con branding adaptable, reloj y estado resumido.
 
 use chrono::Local;
-use ratatui::layout::Rect;
+use ratatui::layout::{Alignment, Rect};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 use ratatui::Frame;
 
 use crate::ui::theme::Theme;
 
-pub fn draw(frame: &mut Frame, area: Rect, theme: &Theme, version: &str, state_label: &str, summary: &str) {
+const BANNER_MIN_WIDTH: u16 = 102;
+const BANNER_MIN_TERMINAL_HEIGHT: u16 = 28;
+const BANNER_HEIGHT: u16 = 9;
+const COMPACT_HEIGHT: u16 = 4;
+
+const PROJECT_NAME: &str = "LOCAL LLM AGENT LAB";
+
+/// Altura apropiada para el encabezado según el espacio total disponible.
+pub fn preferred_height(area: Rect) -> u16 {
+    if area.width >= BANNER_MIN_WIDTH && area.height >= BANNER_MIN_TERMINAL_HEIGHT {
+        BANNER_HEIGHT
+    } else {
+        COMPACT_HEIGHT
+    }
+}
+
+pub fn draw(
+    frame: &mut Frame,
+    area: Rect,
+    theme: &Theme,
+    version: &str,
+    state_label: &str,
+    endpoint: &str,
+    active_profile: Option<&str>,
+) {
+    if area.width >= BANNER_MIN_WIDTH && area.height >= BANNER_HEIGHT {
+        draw_banner(
+            frame,
+            area,
+            theme,
+            version,
+            state_label,
+            endpoint,
+            active_profile,
+        );
+    } else {
+        draw_compact(
+            frame,
+            area,
+            theme,
+            version,
+            state_label,
+            endpoint,
+            active_profile,
+        );
+    }
+}
+
+fn draw_banner(
+    frame: &mut Frame,
+    area: Rect,
+    theme: &Theme,
+    version: &str,
+    state_label: &str,
+    endpoint: &str,
+    active_profile: Option<&str>,
+) {
     let now = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
-    let left = Line::from(vec![
-        Span::styled("⚙ Local LLM Agent Lab", theme.title),
-        Span::raw("  "),
-        Span::styled(format!("v{version}"), theme.muted),
-    ]);
-    let right = Line::from(vec![
-        Span::styled(state_label, theme.state_style(state_label)),
-        Span::raw("  "),
+    let mut lines: Vec<Line> = solid_banner(PROJECT_NAME)
+        .into_iter()
+        .map(|line| Line::from(Span::styled(line, theme.title)).alignment(Alignment::Center))
+        .collect();
+    lines.push(metadata_line(theme, version, endpoint, active_profile));
+    lines.push(Line::from(vec![
+        Span::styled(
+            state_label.to_ascii_uppercase(),
+            theme.state_style(state_label),
+        ),
+        Span::styled("  ·  ", theme.muted),
         Span::styled(now, theme.muted),
-    ]);
+    ]));
+    frame.render_widget(Paragraph::new(lines).alignment(Alignment::Center), area);
+}
+
+fn draw_compact(
+    frame: &mut Frame,
+    area: Rect,
+    theme: &Theme,
+    version: &str,
+    state_label: &str,
+    endpoint: &str,
+    active_profile: Option<&str>,
+) {
+    let now = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
     let lines = vec![
-        left,
-        Line::from(Span::styled(summary, theme.muted)),
+        Line::from(vec![
+            Span::styled("Local LLM Agent Lab", theme.title),
+            Span::raw("  "),
+            Span::styled(format!("v{version}"), theme.muted),
+        ]),
+        metadata_line(theme, version, endpoint, active_profile),
         Line::from(""),
-        right,
+        Line::from(vec![
+            Span::styled(state_label, theme.state_style(state_label)),
+            Span::raw("  "),
+            Span::styled(now, theme.muted),
+        ]),
     ];
-    let paragraph = Paragraph::new(lines);
-    frame.render_widget(paragraph, area);
+    frame.render_widget(Paragraph::new(lines), area);
+}
+
+fn metadata_line<'a>(
+    theme: &Theme,
+    version: &str,
+    endpoint: &str,
+    active_profile: Option<&str>,
+) -> Line<'a> {
+    let mut spans = vec![
+        Span::styled(format!("v{version}"), theme.muted),
+        Span::styled("  ·  endpoint ", theme.muted),
+        Span::styled(endpoint.to_string(), theme.info),
+        Span::styled("  ·  perfil activo: ", theme.muted),
+    ];
+    match active_profile {
+        Some(profile) => spans.push(Span::styled(profile.to_string(), theme.accent)),
+        None => spans.push(Span::styled("ninguno", theme.starting)),
+    }
+    Line::from(spans)
+}
+
+fn solid_banner(text: &str) -> Vec<String> {
+    let mut rows = vec![String::new(); 5];
+    for character in text.chars() {
+        let glyph = solid_glyph(character);
+        for (row, segment) in rows.iter_mut().zip(glyph) {
+            if !row.is_empty() {
+                row.push(' ');
+            }
+            row.push_str(segment);
+        }
+    }
+    rows
+}
+
+fn solid_glyph(character: char) -> [&'static str; 5] {
+    match character {
+        'A' => [" ██ ", "█  █", "████", "█  █", "█  █"],
+        'B' => ["███ ", "█  █", "███ ", "█  █", "███ "],
+        'C' => [" ███", "█   ", "█   ", "█   ", " ███"],
+        'E' => ["████", "█   ", "███ ", "█   ", "████"],
+        'G' => [" ███", "█   ", "█ ██", "█  █", " ███"],
+        'L' => ["█   ", "█   ", "█   ", "█   ", "████"],
+        'M' => ["█  █", "████", "█ ██", "█  █", "█  █"],
+        'N' => ["█  █", "██ █", "████", "█ ██", "█  █"],
+        'O' => [" ██ ", "█  █", "█  █", "█  █", " ██ "],
+        'T' => ["████", " ██ ", " ██ ", " ██ ", " ██ "],
+        ' ' => [" ", " ", " ", " ", " "],
+        _ => ["????", "????", "????", "????", "????"],
+    }
 }

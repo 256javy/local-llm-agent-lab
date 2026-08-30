@@ -1,15 +1,15 @@
-//! Overlay modal durante operaciones largas.
+//! Panel persistente de operaciones largas.
 //!
-//! Muestra la fase actual con un spinner animado y un log streamed en vivo
-//! del subproceso. Bloquea la interacción con el dashboard. Al terminar la
-//! operación, el overlay permanece con el snapshot final hasta que el
-//! usuario lo descarte con `Esc`, `Enter` o `q`.
+//! Muestra la fase actual con un spinner animado y el log streamed en vivo
+//! sin ocultar la telemetría del lab. Al terminar, el snapshot permanece en
+//! el panel derecho hasta volver a perfiles con `p`, `Esc` o `Enter`.
 
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
+use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 use ratatui::Frame;
 
+use crate::compose;
 use crate::ops::Phase;
 use crate::ui::theme::Theme;
 
@@ -38,20 +38,18 @@ impl<'a> OverlayView<'a> {
     fn dismiss_hint(&self) -> &'static str {
         match self.kind {
             OverlayKind::Running => "Pulsa Esc para cancelar",
-            OverlayKind::Finished { .. } => "Pulsa Esc, Enter o q para cerrar",
+            OverlayKind::Finished { .. } => "Pulsa p, Esc o Enter para volver a perfiles",
         }
     }
 }
 
-pub fn draw(frame: &mut Frame, area: Rect, theme: &Theme, view: &OverlayView) {
-    let popup = centered_rect(75, 75, area);
-    frame.render_widget(Clear, popup);
+pub fn draw_panel(frame: &mut Frame, area: Rect, theme: &Theme, view: &OverlayView) {
     let block = Block::default()
         .borders(Borders::ALL)
         .border_style(theme.accent)
         .title(Span::styled(format!(" {} ", view.title), theme.title));
-    let inner = block.inner(popup);
-    frame.render_widget(block, popup);
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -60,25 +58,6 @@ pub fn draw(frame: &mut Frame, area: Rect, theme: &Theme, view: &OverlayView) {
 
     draw_phase(frame, chunks[0], theme, view);
     draw_log(frame, chunks[1], theme, view.log_lines);
-}
-
-fn centered_rect(percent_x: u16, percent_y: u16, area: Rect) -> Rect {
-    let popup_y = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Percentage((100 - percent_y) / 2),
-            Constraint::Percentage(percent_y),
-            Constraint::Percentage((100 - percent_y) / 2),
-        ])
-        .split(area);
-    Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage((100 - percent_x) / 2),
-            Constraint::Percentage(percent_x),
-            Constraint::Percentage((100 - percent_x) / 2),
-        ])
-        .split(popup_y[1])[1]
 }
 
 fn draw_phase(frame: &mut Frame, area: Rect, theme: &Theme, view: &OverlayView) {
@@ -154,6 +133,7 @@ pub fn phase_label(phase: &Phase) -> &'static str {
         Phase::WaitingHealth { .. } => "Esperando /health",
         Phase::Stopping { .. } => "Deteniendo contenedor",
         Phase::WaitingVram { .. } => "Liberando VRAM",
+        Phase::Streaming { .. } => "Leyendo logs del contenedor",
         Phase::Done { .. } => "Completado",
         Phase::Failed { .. } => "Fallido",
         Phase::Info { .. } => "Información",
@@ -168,6 +148,11 @@ pub fn phase_detail(phase: &Phase) -> String {
         Phase::Stopping { container } => format!("docker compose down ({container})"),
         Phase::WaitingVram { baseline_mib, current_mib } => format!(
             "baseline {baseline_mib} MiB · actual {current_mib} MiB"
+        ),
+        Phase::Streaming { tail, follow } => format!(
+            "docker compose logs --tail {tail} {}{}",
+            if *follow { "--follow " } else { "" },
+            compose::service_name()
         ),
         Phase::Done { summary } | Phase::Failed { summary } | Phase::Info { summary } => summary.clone(),
     }

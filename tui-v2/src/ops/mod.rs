@@ -1,7 +1,7 @@
 //! Operaciones de control expuestas en la TUI.
 //!
 //! Cada función devuelve un `Operation` que la TUI puede ejecutar en un
-//! hilo de fondo mientras muestra al usuario un overlay con spinner y el
+//! hilo de fondo mientras muestra al usuario un panel con spinner y el
 //! log en vivo del subproceso. La semántica replica `command_*` de la CLI.
 
 pub mod doctor;
@@ -26,6 +26,7 @@ pub enum Phase {
     WaitingHealth { endpoint: String },
     Stopping { container: String },
     WaitingVram { baseline_mib: u64, current_mib: u64 },
+    Streaming { tail: u32, follow: bool },
     Done { summary: String },
     Failed { summary: String },
     Info { summary: String },

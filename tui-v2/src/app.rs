@@ -3,7 +3,7 @@
 //! Coordina el render con las operaciones en background. Cada operación se
 //! ejecuta en su propio hilo, enviando `OpEvent` por un canal que la TUI
 //! consume en su tick principal. Los eventos `Stream` alimentan el log del
-//! overlay; los eventos `Phase` actualizan el estado mostrado.
+//! panel derecho; los eventos `Phase` actualizan el estado mostrado.
 
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::{Duration, Instant};
@@ -19,9 +19,10 @@ use crate::ops::{OpEvent, Phase};
 use crate::profiles::Profile;
 use crate::system;
 use crate::ui::footer::Mode as FooterMode;
-use crate::ui::overlay::OverlayKind;
+use crate::ui::overlay::{OverlayKind, OverlayView};
 
-const LOG_TAIL_LINES: usize = 200;
+const DEFAULT_LOG_TAIL: u32 = 200;
+const MAX_LOG_TAIL: u32 = 100_000;
 
 pub struct App {
     pub settings: Settings,
@@ -33,6 +34,7 @@ pub struct App {
     pub last_event: Option<String>,
     pub mode: Mode,
     pub confirm: Option<ConfirmKind>,
+    pub tail_prompt: Option<TailPrompt>,
     pub running_op: Option<RunningOp>,
     pub finished_op: Option<FinishedOp>,
     pub help_visible: bool,
@@ -40,10 +42,17 @@ pub struct App {
     pub op_started: Option<Instant>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
     Dashboard,
     Operation,
+    TailPrompt,
+}
+
+#[derive(Debug, Clone)]
+pub struct TailPrompt {
+    pub input: String,
+    pub follow: bool,
 }
 
 pub struct RunningOp {
@@ -90,6 +99,7 @@ impl App {
             last_event: None,
             mode: Mode::Dashboard,
             confirm: None,
+            tail_prompt: None,
             running_op: None,
             finished_op: None,
             help_visible: false,
@@ -149,8 +159,8 @@ impl App {
                         }
                     };
                     op.log.push(line);
-                    if op.log.len() > LOG_TAIL_LINES {
-                        let drop = op.log.len() - LOG_TAIL_LINES;
+                    if op.log.len() > DEFAULT_LOG_TAIL as usize {
+                        let drop = op.log.len() - DEFAULT_LOG_TAIL as usize;
                         op.log.drain(0..drop);
                     }
                 }
@@ -228,6 +238,9 @@ impl App {
             }
             return Ok(false);
         }
+        if self.tail_prompt.is_some() {
+            return self.handle_tail_prompt_key(key);
+        }
         if self.finished_op.is_some() {
             return self.handle_finished_key(key);
         }
@@ -244,8 +257,10 @@ impl App {
             KeyCode::Char('r') => self.refresh_status_now()?,
             KeyCode::Char('p') => self.reload_profiles()?,
             KeyCode::Char('h') => self.start_health(),
-            KeyCode::Char('l') => self.start_logs(false),
-            KeyCode::Char('L') => self.start_logs(true),
+            KeyCode::Char('l') => self.start_logs(false, DEFAULT_LOG_TAIL),
+            KeyCode::Char('L') => self.start_logs(true, DEFAULT_LOG_TAIL),
+            KeyCode::Char('t') => self.open_tail_prompt(false),
+            KeyCode::Char('T') => self.open_tail_prompt(true),
             KeyCode::Char('d') => self.mark_default()?,
             KeyCode::Char('D') => self.start_doctor(),
             KeyCode::Char('x') => self.confirm_stop(),
@@ -256,6 +271,57 @@ impl App {
             _ => {}
         }
         Ok(false)
+    }
+
+    fn handle_tail_prompt_key(&mut self, key: KeyEvent) -> Result<bool> {
+        match key.code {
+            KeyCode::Esc => {
+                self.tail_prompt = None;
+                self.mode = Mode::Dashboard;
+            }
+            KeyCode::Char('q') => {
+                self.tail_prompt = None;
+                self.mode = Mode::Dashboard;
+                return Ok(true);
+            }
+            KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.tail_prompt = None;
+                self.mode = Mode::Dashboard;
+                return Ok(true);
+            }
+            KeyCode::Enter => {
+                let prompt = self.tail_prompt.take().unwrap_or(TailPrompt {
+                    input: DEFAULT_LOG_TAIL.to_string(),
+                    follow: false,
+                });
+                self.mode = Mode::Dashboard;
+                let tail = prompt.input.trim().parse::<u32>().unwrap_or(DEFAULT_LOG_TAIL);
+                let tail = tail.clamp(1, MAX_LOG_TAIL);
+                self.start_logs(prompt.follow, tail);
+            }
+            KeyCode::Backspace => {
+                if let Some(prompt) = self.tail_prompt.as_mut() {
+                    prompt.input.pop();
+                }
+            }
+            KeyCode::Char(c) if c.is_ascii_digit() => {
+                if let Some(prompt) = self.tail_prompt.as_mut() {
+                    if prompt.input.len() < 6 {
+                        prompt.input.push(c);
+                    }
+                }
+            }
+            _ => {}
+        }
+        Ok(false)
+    }
+
+    fn open_tail_prompt(&mut self, follow: bool) {
+        self.tail_prompt = Some(TailPrompt {
+            input: DEFAULT_LOG_TAIL.to_string(),
+            follow,
+        });
+        self.mode = Mode::TailPrompt;
     }
 
     fn handle_confirm_key(&mut self, key: KeyEvent) -> Result<bool> {
@@ -297,7 +363,8 @@ impl App {
 
     fn handle_finished_key(&mut self, key: KeyEvent) -> Result<bool> {
         match key.code {
-            KeyCode::Esc | KeyCode::Enter | KeyCode::Char('q') => {
+            KeyCode::Char('q') => return Ok(true),
+            KeyCode::Esc | KeyCode::Enter | KeyCode::Char('p') => {
                 self.finished_op = None;
                 if let Err(e) = self.refresh_status_now() {
                     self.last_event = Some(format!("Error refrescando estado: {e}"));
@@ -344,7 +411,7 @@ impl App {
 
     fn confirm_stop(&mut self) {
         if !system::docker_container_running() && self.status.profile.is_none() {
-            self.last_event = Some("No hay un perfil administrado activo".into());
+            self.last_event = Some("No hay un contenedor administrado en ejecución".into());
             return;
         }
         self.confirm = Some(ConfirmKind::Stop { profile_id: self.status.profile.clone() });
@@ -428,11 +495,16 @@ impl App {
         }
     }
 
-    fn start_logs(&mut self, follow: bool) {
+    fn start_logs(&mut self, follow: bool, tail: u32) {
         let settings = self.settings.clone();
         let (tx, rx) = mpsc::channel();
+        let title = if follow {
+            format!("logs · follow · tail {tail}")
+        } else {
+            format!("logs · tail {tail}")
+        };
         self.running_op = Some(RunningOp {
-            title: if follow { "logs (follow)" } else { "logs" }.into(),
+            title,
             rx,
             log: Vec::new(),
             phase: Some(Phase::Init),
@@ -442,7 +514,7 @@ impl App {
         self.op_started = Some(Instant::now());
         self.mode = Mode::Operation;
         std::thread::spawn(move || {
-            let _ = crate::ops::logs::LogsOp::new(settings, 200, follow, tx).run();
+            let _ = crate::ops::logs::LogsOp::new(settings, tail, follow, tx).run();
         });
     }
 
@@ -472,6 +544,7 @@ impl App {
             Mode::Dashboard if self.help_visible => FooterMode::Help,
             Mode::Dashboard => FooterMode::Dashboard,
             Mode::Operation => FooterMode::Operation,
+            Mode::TailPrompt => FooterMode::TailPrompt,
         };
         let last_event = self.last_event.as_deref();
         let version = self.version;
@@ -489,12 +562,13 @@ impl App {
         terminal.draw(|frame| {
             use ratatui::layout::{Constraint, Direction, Layout};
             let area = frame.area();
+            let header_height = crate::ui::header::preferred_height(area);
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([
-                    Constraint::Length(4),
+                    Constraint::Length(header_height),
                     Constraint::Min(8),
-                    Constraint::Length(2),
+                    Constraint::Length(footer_height(self.mode, self.help_visible)),
                 ])
                 .split(area);
             crate::ui::header::draw(
@@ -503,8 +577,30 @@ impl App {
                 theme,
                 version,
                 &status.state,
-                &summary_line(status, settings),
+                &settings.endpoint(),
+                status.profile.as_deref(),
             );
+            let right_panel = if let Some(op) = running_op {
+                crate::ui::dashboard::RightPanel::Operation(OverlayView {
+                    title: &op.title,
+                    phase: op.phase.as_ref(),
+                    log_lines: &op.log,
+                    frame_idx: spinner_frame,
+                    elapsed_secs: op.elapsed_secs,
+                    kind: OverlayKind::Running,
+                })
+            } else if let Some(finished) = &self.finished_op {
+                crate::ui::dashboard::RightPanel::Operation(OverlayView {
+                    title: &finished.title,
+                    phase: finished.phase.as_ref(),
+                    log_lines: &finished.log,
+                    frame_idx: spinner_frame,
+                    elapsed_secs: finished.elapsed_secs,
+                    kind: OverlayKind::Finished { ok: finished.ok },
+                })
+            } else {
+                crate::ui::dashboard::RightPanel::Profiles
+            };
             let dash_view = crate::ui::dashboard::DashboardView {
                 status,
                 profiles,
@@ -512,32 +608,24 @@ impl App {
                 data_dir: &data_dir,
                 default_profile,
                 last_event,
+                right_panel,
             };
             crate::ui::dashboard::draw(frame, chunks[1], theme, &dash_view);
             crate::ui::footer::draw(frame, chunks[2], theme, footer_mode);
-            if let Some(op) = running_op {
-                let overlay = crate::ui::overlay::OverlayView {
-                    title: &op.title,
-                    phase: op.phase.as_ref(),
-                    log_lines: &op.log,
-                    frame_idx: spinner_frame,
-                    elapsed_secs: op.elapsed_secs,
-                    kind: OverlayKind::Running,
-                };
-                crate::ui::overlay::draw(frame, area, theme, &overlay);
-            } else if let Some(finished) = &self.finished_op {
-                let overlay = crate::ui::overlay::OverlayView {
-                    title: &finished.title,
-                    phase: finished.phase.as_ref(),
-                    log_lines: &finished.log,
-                    frame_idx: spinner_frame,
-                    elapsed_secs: finished.elapsed_secs,
-                    kind: OverlayKind::Finished { ok: finished.ok },
-                };
-                crate::ui::overlay::draw(frame, area, theme, &overlay);
-            }
             if help_visible {
                 crate::ui::help::draw(frame, area, theme);
+            }
+            if let Some(prompt) = &self.tail_prompt {
+                let title = if prompt.follow {
+                    "Logs · follow · número de líneas"
+                } else {
+                    "Logs · número de líneas"
+                };
+                let description = format!(
+                    "Cantidad de líneas a mostrar del contenedor. Por defecto {}; máximo {}. Sin follow se cierra al agotar el buffer.",
+                    DEFAULT_LOG_TAIL, MAX_LOG_TAIL
+                );
+                crate::ui::input::draw(frame, area, theme, title, &description, &prompt.input);
             }
             if let Some(kind) = confirm {
                 let (title, message) = match kind {
@@ -554,9 +642,9 @@ impl App {
                         ),
                     ),
                     ConfirmKind::Stop { profile_id } => (
-                        "Confirmar stop",
+                        "Confirmar stop del contenedor",
                         format!(
-                            "Vas a detener el perfil administrado{}. Los modelos y caches se conservan.",
+                            "Vas a detener el contenedor administrado{}. El perfil, los modelos y caches en disco se conservan; la VRAM se libera antes de cerrar.",
                             profile_id
                                 .as_deref()
                                 .map(|p| format!(" {p}"))
@@ -571,10 +659,14 @@ impl App {
     }
 }
 
-fn summary_line(status: &StatusReport, settings: &Settings) -> String {
-    match status.profile.as_deref() {
-        Some(id) => format!("endpoint {} · perfil activo: {id}", settings.endpoint()),
-        None => format!("endpoint {} · sin perfil activo", settings.endpoint()),
+fn footer_height(mode: Mode, help_visible: bool) -> u16 {
+    if help_visible {
+        return 2;
+    }
+    match mode {
+        Mode::Dashboard => 3,
+        Mode::TailPrompt => 2,
+        _ => 2,
     }
 }
 
