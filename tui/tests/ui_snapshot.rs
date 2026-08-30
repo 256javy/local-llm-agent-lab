@@ -11,31 +11,31 @@ use ratatui::Terminal;
 #[test]
 fn dashboard_renders_without_panic() {
     let repo = repo_dir();
-    let settings = tui_v2::config::load(repo).expect("settings");
-    let profiles = tui_v2::profiles::load(&settings).expect("profiles");
-    let profiles: Vec<tui_v2::profiles::Profile> = profiles.into_values().collect();
+    let settings = llm_lab_tui::config::load(repo).expect("settings");
+    let profiles = llm_lab_tui::profiles::load(&settings).expect("profiles");
+    let profiles: Vec<llm_lab_tui::profiles::Profile> = profiles.into_values().collect();
 
     let backend = TestBackend::new(120, 30);
     let mut terminal = Terminal::new(backend).expect("terminal");
 
-    let status = tui_v2::ops::status::StatusOp::new(settings.clone())
+    let status = llm_lab_tui::ops::status::StatusOp::new(settings.clone())
         .run(&dummy_sink())
         .expect("status");
     let data_dir = settings.data_dir.display().to_string();
 
     terminal
         .draw(|frame| {
-            let view = tui_v2::ui::dashboard::DashboardView {
+            let view = llm_lab_tui::ui::dashboard::DashboardView {
                 status: &status,
                 profiles: &profiles,
                 selected: 0,
                 data_dir: &data_dir,
                 default_profile: &settings.default_profile,
                 last_event: Some("snapshot"),
-                right_panel: tui_v2::ui::dashboard::RightPanel::Profiles,
+                right_panel: llm_lab_tui::ui::dashboard::RightPanel::Profiles,
             };
             let area = frame.area();
-            let header_height = tui_v2::ui::header::preferred_height(area);
+            let header_height = llm_lab_tui::ui::header::preferred_height(area);
             let chunks = ratatui::layout::Layout::default()
                 .direction(ratatui::layout::Direction::Vertical)
                 .constraints([
@@ -44,7 +44,7 @@ fn dashboard_renders_without_panic() {
                     ratatui::layout::Constraint::Length(3),
                 ])
                 .split(area);
-            tui_v2::ui::header::draw(
+            llm_lab_tui::ui::header::draw(
                 frame,
                 chunks[0],
                 &Default::default(),
@@ -53,12 +53,12 @@ fn dashboard_renders_without_panic() {
                 &settings.endpoint(),
                 status.profile.as_deref(),
             );
-            tui_v2::ui::dashboard::draw(frame, chunks[1], &Default::default(), &view);
-            tui_v2::ui::footer::draw(
+            llm_lab_tui::ui::dashboard::draw(frame, chunks[1], &Default::default(), &view);
+            llm_lab_tui::ui::footer::draw(
                 frame,
                 chunks[2],
                 &Default::default(),
-                tui_v2::ui::footer::Mode::Dashboard,
+                llm_lab_tui::ui::footer::Mode::Dashboard,
             );
         })
         .expect("draw");
@@ -93,9 +93,9 @@ fn render_header_text(width: u16, height: u16) -> String {
                 0,
                 0,
                 width,
-                tui_v2::ui::header::preferred_height(area),
+                llm_lab_tui::ui::header::preferred_height(area),
             );
-            tui_v2::ui::header::draw(
+            llm_lab_tui::ui::header::draw(
                 frame,
                 header_area,
                 &Default::default(),
@@ -123,7 +123,7 @@ fn header_wide_uses_ascii_banner_and_operational_metadata() {
     assert!(out.contains("http://127.0.0.1:18080/v1"));
     assert!(out.contains("HEALTHY"));
     assert_eq!(
-        tui_v2::ui::header::preferred_height(ratatui::layout::Rect::new(0, 0, 140, 32)),
+        llm_lab_tui::ui::header::preferred_height(ratatui::layout::Rect::new(0, 0, 140, 32)),
         6
     );
     assert!(out.chars().take(140).all(|character| character == ' '));
@@ -139,8 +139,8 @@ fn header_narrow_keeps_compact_branding() {
 
 #[test]
 fn dashboard_can_keep_operation_in_right_panel() {
-    use tui_v2::ops::Phase;
-    use tui_v2::ui::overlay::{OverlayKind, OverlayView};
+    use llm_lab_tui::ops::Phase;
+    use llm_lab_tui::ui::overlay::{OverlayKind, OverlayView};
 
     let backend = TestBackend::new(100, 24);
     let mut terminal = Terminal::new(backend).expect("terminal");
@@ -158,7 +158,7 @@ fn dashboard_can_keep_operation_in_right_panel() {
 
     terminal
         .draw(|frame| {
-            tui_v2::ui::overlay::draw_panel(
+            llm_lab_tui::ui::overlay::draw_panel(
                 frame,
                 frame.area(),
                 &Default::default(),
@@ -191,7 +191,7 @@ fn tail_prompt_modal_renders() {
     terminal
         .draw(|frame| {
             let area = frame.area();
-            tui_v2::ui::input::draw(
+            llm_lab_tui::ui::input::draw(
                 frame,
                 area,
                 &Default::default(),
@@ -226,11 +226,11 @@ fn footer_groups_have_labels() {
     terminal
         .draw(|frame| {
             let area = frame.area();
-            tui_v2::ui::footer::draw(
+            llm_lab_tui::ui::footer::draw(
                 frame,
                 area,
                 &Default::default(),
-                tui_v2::ui::footer::Mode::Dashboard,
+                llm_lab_tui::ui::footer::Mode::Dashboard,
             );
         })
         .expect("draw");
@@ -259,11 +259,11 @@ fn render_footer_text(width: u16, height: u16) -> String {
     let mut terminal = Terminal::new(backend).expect("terminal");
     terminal
         .draw(|frame| {
-            tui_v2::ui::footer::draw(
+            llm_lab_tui::ui::footer::draw(
                 frame,
                 ratatui::layout::Rect::new(0, 0, width, height),
                 &Default::default(),
-                tui_v2::ui::footer::Mode::Dashboard,
+                llm_lab_tui::ui::footer::Mode::Dashboard,
             );
         })
         .expect("draw");
@@ -328,7 +328,7 @@ fn footer_very_narrow_uses_cont_marker() {
     );
 }
 
-fn dummy_sink() -> std::sync::mpsc::Sender<tui_v2::ops::OpEvent> {
+fn dummy_sink() -> std::sync::mpsc::Sender<llm_lab_tui::ops::OpEvent> {
     let (tx, _rx) = std::sync::mpsc::channel();
     tx
 }

@@ -9,7 +9,7 @@ use std::path::PathBuf;
 #[test]
 fn load_settings_from_repo() {
     let repo = repo_dir();
-    let settings = tui_v2::config::load(repo).expect("settings");
+    let settings = llm_lab_tui::config::load(repo).expect("settings");
     assert!(settings.port > 0);
     assert_eq!(settings.host, "127.0.0.1");
 }
@@ -17,8 +17,8 @@ fn load_settings_from_repo() {
 #[test]
 fn load_repository_profiles() {
     let repo = repo_dir();
-    let settings = tui_v2::config::load(repo).expect("settings");
-    let profiles = tui_v2::profiles::load(&settings).expect("profiles");
+    let settings = llm_lab_tui::config::load(repo).expect("settings");
+    let profiles = llm_lab_tui::profiles::load(&settings).expect("profiles");
     assert!(profiles.contains_key("gemma-4-12b-qat-mtp"));
     assert!(profiles.contains_key("qwen-3.6-moe-2bit"));
 }
@@ -26,13 +26,13 @@ fn load_repository_profiles() {
 #[test]
 fn qwen_profile_preserves_cuda_architecture() {
     let repo = repo_dir();
-    let settings = tui_v2::config::load(repo).expect("settings");
-    let profile = tui_v2::profiles::get(&settings, "qwen-3.6-moe-2bit").expect("qwen profile");
+    let settings = llm_lab_tui::config::load(repo).expect("settings");
+    let profile = llm_lab_tui::profiles::get(&settings, "qwen-3.6-moe-2bit").expect("qwen profile");
 
     assert!(profile.runtime.cmake_args.iter().any(|arg| arg == "-DCMAKE_CUDA_ARCHITECTURES=120"));
     assert!(!profile.runtime.cmake_args.iter().any(|arg| arg.contains("LLAMA_BUILD_WEBUI")));
 
-    let env = tui_v2::compose::compose_env(&settings, &profile);
+    let env = llm_lab_tui::compose::compose_env(&settings, &profile);
     let cmake_args = env.get("LLM_LAB_RUNTIME_CMAKE_ARGS").expect("cmake args");
     assert!(cmake_args.contains("-DCMAKE_CUDA_ARCHITECTURES=120"));
     assert!(!cmake_args.contains("LLAMA_BUILD_WEBUI"));
@@ -41,8 +41,8 @@ fn qwen_profile_preserves_cuda_architecture() {
 #[test]
 fn status_payload_round_trip() {
     let repo = repo_dir();
-    let settings = tui_v2::config::load(repo).expect("settings");
-    let payload = tui_v2::system::state_payload(&settings);
+    let settings = llm_lab_tui::config::load(repo).expect("settings");
+    let payload = llm_lab_tui::system::state_payload(&settings);
     assert!(payload.is_object());
     assert!(payload.get("state").is_some());
 }
@@ -50,8 +50,8 @@ fn status_payload_round_trip() {
 #[test]
 fn port_is_available_or_in_use_consistent() {
     let repo = repo_dir();
-    let settings = tui_v2::config::load(repo).expect("settings");
-    let free = tui_v2::system::port_available(&settings.host, settings.port);
+    let settings = llm_lab_tui::config::load(repo).expect("settings");
+    let free = llm_lab_tui::system::port_available(&settings.host, settings.port);
     // No afirmamos valor absoluto: sólo que la función no panicea.
     let _ = free;
 }
@@ -59,8 +59,8 @@ fn port_is_available_or_in_use_consistent() {
 #[test]
 fn compose_command_contains_required_flags() {
     let repo = repo_dir();
-    let settings = tui_v2::config::load(repo).expect("settings");
-    let cmd = tui_v2::compose::compose_command(&settings, &["ps"]);
+    let settings = llm_lab_tui::config::load(repo).expect("settings");
+    let cmd = llm_lab_tui::compose::compose_command(&settings, &["ps"]);
     assert_eq!(cmd[0], "docker");
     assert!(cmd.iter().any(|s| s == "compose"));
     assert!(cmd.iter().any(|s| s == "local-llm-agent-lab"));
@@ -70,8 +70,8 @@ fn compose_command_contains_required_flags() {
 #[test]
 fn unknown_profile_returns_error() {
     let repo = repo_dir();
-    let settings = tui_v2::config::load(repo).expect("settings");
-    let err = tui_v2::profiles::get(&settings, "no-existe").unwrap_err();
+    let settings = llm_lab_tui::config::load(repo).expect("settings");
+    let err = llm_lab_tui::profiles::get(&settings, "no-existe").unwrap_err();
     let msg = format!("{err}");
     assert!(msg.contains("Perfil desconocido"));
 }

@@ -22,7 +22,7 @@ Estado confirmado al 2026-08-30:
 
   ```bash
   PYTHONPATH=src python3 -m unittest discover -s tests -v
-  cargo test --manifest-path tui-v2/Cargo.toml
+  cargo test --manifest-path tui/Cargo.toml
   ./bin/llm-lab profiles
   ./bin/llm-lab config show --effective
   ./bin/llm-lab doctor
@@ -104,16 +104,18 @@ evidencia contradictoria.
 - Aceptación: documentación coherente desde un clon limpio, backlog reducido a
   trabajo accionable y commit de limpieza separado de cambios funcionales.
 
-### I-07 — CLI y TUI unificadas (diferida)
+### I-07 — CLI y TUI unificadas (en curso)
 
-- [ ] Eliminar la TUI v1 de Python y sus referencias tras confirmar paridad.
+- [x] Eliminar la TUI v1 de Python y sus referencias tras confirmar que estaba
+      aislada y que la TUI Rust cubría sus comandos operativos.
 - [ ] Mejorar la CLI como única capa de dominio reutilizable: salida JSON
   consistente, errores estables y comandos de benchmarks/archivo frío completos.
-- [ ] Convertir `tui-v2` en `tui` predeterminada y cubrir todas las mejoras de la
-  CLI, incluidos archivo/restauración, suites nuevas y arquitectura CUDA.
-- [ ] Añadir migración documental y comprobar que no queden dos implementaciones
-  de lógica operativa.
-- Prioridad: diferida hasta completar I-02 a I-05.
+- [ ] Cubrir en la TUI las mejoras posteriores de la CLI, incluidos
+      archivo/restauración, suites nuevas y arquitectura CUDA.
+- [x] Promover la TUI Rust de `tui-v2/` a `tui/`, actualizar la ruta documental
+      y comprobar que no queden dos implementaciones de lógica operativa.
+- Prioridad: la consolidación de la TUI está completa; las mejoras funcionales
+  restantes siguen diferidas hasta completar I-02 a I-05.
 - Aceptación: una sola TUI Rust, sin `tui/main.py`, paridad cubierta por tests y
   sin pérdida de comandos ni accesibilidad desde teclado.
 
@@ -181,7 +183,7 @@ evidencia contradictoria.
 - [~] Catálogo público de candidatos para 16 GB; falta fijar GGUF, revisión y
       checksum antes de crear perfiles experimentales.
 
-## Fase 6 — TUI v2
+## Fase 6 — TUI
 
 - [x] Reimplementar primitivas en Rust (settings, env, profiles, state, gpu,
       port, http, compose).
@@ -192,5 +194,5 @@ evidencia contradictoria.
 - [x] Diálogo de confirmación para start, switch y stop.
 - [x] Footer con atajos contextuales y pantalla de ayuda.
 - [x] Tests de integración + snapshot del dashboard con `TestBackend`.
-- [ ] I-07: retirar la TUI v1, promover la TUI Rust como predeterminada y
-      recuperar paridad con todas las mejoras posteriores de la CLI.
+- [x] I-07: retirar la TUI v1 y promover la TUI Rust como predeterminada.
+- [ ] I-07: recuperar paridad con todas las mejoras posteriores de la CLI.

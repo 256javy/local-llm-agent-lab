@@ -44,23 +44,21 @@ Cambiar de modelo libera primero el perfil activo:
 
 ## TUI
 
-Hay dos TUI equivalentes en cobertura. La primera (`tui/`, Python + cmd) y
-la segunda (`tui-v2/`, Rust + ratatui) comparten la misma lógica expuesta
-por `bin/llm-lab`:
+La TUI predeterminada (`tui/`, Rust + ratatui) comparte el contrato operativo
+de `bin/llm-lab`:
 
 - `start` / `stop` / `switch <perfil>`
 - `status`, `health`, `profiles`, `doctor`
 - `logs` (`--tail`, `--follow`)
 - marcado del perfil por defecto
 
-Ambas usan el lock de control sobre `state.json`, por lo que pueden
-alternarse con la CLI sin corromper el estado. La TUI Rust mantiene la
-telemetría a la izquierda y usa el panel derecho para alternar entre perfiles,
-logs y resultados de operaciones sin ocultar el dashboard.
+Usa el mismo lock de control sobre `state.json`, por lo que puede alternarse
+con la CLI sin corromper el estado. Mantiene la telemetría a la izquierda y
+usa el panel derecho para alternar entre perfiles, logs y resultados de
+operaciones sin ocultar el dashboard.
 
 ```bash
-./tui/run_tui.sh     # TUI clásica en Python
-./tui-v2/run_tui.sh  # TUI Rust con ratatui (compila en primer uso)
+./tui/run_tui.sh  # compila en el primer uso
 ```
 
 ## Clientes

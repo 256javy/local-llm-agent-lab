@@ -1,5 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
-repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-export PYTHONPATH="${repo_dir}/src${PYTHONPATH:+:${PYTHONPATH}}"
-exec python3 "${repo_dir}/tui/main.py" "$@"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+release_bin="${script_dir}/target/release/llm-lab-tui"
+debug_bin="${script_dir}/target/debug/llm-lab-tui"
+
+if [[ -x "${release_bin}" ]]; then
+    exec "${release_bin}" "$@"
+fi
+
+if [[ -x "${debug_bin}" ]]; then
+    exec "${debug_bin}" "$@"
+fi
+
+echo "Compilando la TUI (primera ejecución)…" >&2
+if ! (cd "${script_dir}" && cargo build --release); then
+    echo "ERROR: no se pudo compilar la TUI" >&2
+    exit 1
+fi
+
+exec "${release_bin}" "$@"

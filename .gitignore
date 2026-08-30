@@ -18,5 +18,5 @@ benchmark-results/
 *.part
 *.gguf
 *.litertlm
-tui-v2/target/
+tui/target/
 tui/__pycache__/
