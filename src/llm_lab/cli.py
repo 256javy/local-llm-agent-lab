@@ -317,8 +317,6 @@ def command_storage(settings: Settings, args: argparse.Namespace) -> None:
         profile = get_profile(settings, args.profile)
         if not settings.archive_dir:
             raise LabError("Configura LLM_LAB_ARCHIVE_DIR antes de archivar o restaurar", 2)
-        if docker_container_running() or read_state(settings):
-            raise LabError("Detén el perfil activo antes de mover modelos", 1)
         active_root = (settings.data_dir / "models").resolve()
         archive_root = (settings.archive_dir / "models").resolve()
         if active_root == archive_root or active_root in archive_root.parents or archive_root in active_root.parents:
@@ -329,6 +327,8 @@ def command_storage(settings: Settings, args: argparse.Namespace) -> None:
         source = source_root / profile["id"]
         destination = destination_root / profile["id"]
         with control_lock(settings):
+            if docker_container_running() or read_state(settings):
+                raise LabError("Detén el perfil activo antes de mover modelos", 1)
             if not source.is_dir():
                 raise LabError(f"No existe el modelo de {profile['id']} en {source_root}", 1)
             if destination.exists():

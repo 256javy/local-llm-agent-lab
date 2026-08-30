@@ -77,6 +77,31 @@ class CliTests(unittest.TestCase):
             self.assertEqual(restored.returncode, 0, restored.stderr)
             self.assertTrue((model / "fixture.gguf").exists())
 
+    def test_storage_archive_rejects_active_state_without_moving_model(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            data = root / "active"
+            archive = root / "archive"
+            state = root / "state"
+            model = data / "models" / "gemma-4-12b-qat-mtp"
+            model.mkdir(parents=True)
+            (model / "fixture.gguf").write_text("fixture", encoding="utf-8")
+            state_dir = state / "local-llm-agent-lab"
+            state_dir.mkdir(parents=True)
+            (state_dir / "state.json").write_text('{"state":"healthy"}\n', encoding="utf-8")
+            environment = {
+                "LLM_LAB_DATA_DIR": str(data),
+                "LLM_LAB_ARCHIVE_DIR": str(archive),
+                "XDG_STATE_HOME": str(state),
+            }
+            result = invoke("storage", "archive", "gemma-4-12b-qat-mtp", environment_overrides=environment)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("Detén el perfil activo", result.stderr)
+            self.assertTrue((model / "fixture.gguf").exists())
+            self.assertFalse((archive / "models" / "gemma-4-12b-qat-mtp").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
