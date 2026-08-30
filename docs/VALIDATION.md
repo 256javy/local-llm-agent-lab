@@ -105,3 +105,21 @@ Este baseline se conserva para comparar compatibilidad y rendimiento. Qwen 3.8
 fue reconstruido después con el runtime vigente y sus resultados CUDA 13 se
 incorporaron a la tabla anterior. Gemma 26B sigue siendo el único GGUF del
 catálogo que no está descargado.
+
+## Suites ampliadas
+
+El 2026-08-30 Gemma 4 12B validó el primer corte de las suites nuevas sobre
+CUDA 13.0.3 y `b1-57291f2`:
+
+| Suite | Casos por fixture | Máximo mediano | Máximo p95 | Resultado |
+|---|---:|---:|---:|---|
+| `quality` | 3 | 0,131 s | 0,171 s | correcto |
+| `tools` | 3 | 1,072 s | 1,123 s | correcto |
+| `context` (~8K) | 3 | 0,233 s | 3,864 s | correcto |
+| `soak` | 50 | 0,659 s | 0,669 s | correcto |
+
+`soak` ejecutó dos fixtures, por lo que completó 100 solicitudes sin fallos.
+El p95 de contexto incluye la primera evaluación en frío y evidencia por qué se
+registran percentiles además de la mediana. Falta ejecutar esta matriz sobre los
+otros perfiles y sumar los benchmarks externos versionados indicados en el
+backlog.

@@ -28,6 +28,8 @@ class Settings:
     host: str
     port: int
     data_dir: pathlib.Path
+    archive_dir: pathlib.Path | None
+    cuda_architectures: str
     default_profile: str
     api_key: str
     start_timeout: int
@@ -74,6 +76,8 @@ def load_settings(repo_dir: pathlib.Path) -> Settings:
     data_dir = pathlib.Path(data_raw).expanduser() if data_raw else pathlib.Path(
         os.environ.get("XDG_DATA_HOME", pathlib.Path.home() / ".local/share")
     ) / "local-llm-agent-lab"
+    archive_raw = value("LLM_LAB_ARCHIVE_DIR", "")
+    archive_dir = pathlib.Path(archive_raw).expanduser().resolve() if archive_raw else None
     try:
         port = int(value("LLM_LAB_PORT", "18080"))
         start_timeout = int(value("LLM_LAB_START_TIMEOUT", "900"))
@@ -87,6 +91,8 @@ def load_settings(repo_dir: pathlib.Path) -> Settings:
         host=value("LLM_LAB_HOST", "127.0.0.1"),
         port=port,
         data_dir=data_dir.resolve(),
+        archive_dir=archive_dir,
+        cuda_architectures=value("LLM_LAB_CUDA_ARCHITECTURES", ""),
         default_profile=value("LLM_LAB_DEFAULT_PROFILE", "gemma-4-12b-qat-mtp"),
         api_key=value("LLM_LAB_API_KEY", ""),
         start_timeout=start_timeout,
@@ -186,6 +192,10 @@ def run(command: list[str], *, cwd: pathlib.Path | None = None, env: dict[str, s
 
 
 def compose_env(settings: Settings, profile: dict[str, Any]) -> dict[str, str]:
+    cmake_args = list(profile["runtime"].get("cmakeArgs", []))
+    if settings.cuda_architectures:
+        cmake_args = [arg for arg in cmake_args if not arg.startswith("-DCMAKE_CUDA_ARCHITECTURES=")]
+        cmake_args.append(f"-DCMAKE_CUDA_ARCHITECTURES={settings.cuda_architectures}")
     env = os.environ.copy()
     env.update({
         "LLM_LAB_HOST": settings.host,
@@ -194,7 +204,7 @@ def compose_env(settings: Settings, profile: dict[str, Any]) -> dict[str, str]:
         "LLM_LAB_PROFILE_FILE": profile["_path"],
         "LLM_LAB_RUNTIME_REPOSITORY": profile["runtime"]["repository"],
         "LLM_LAB_RUNTIME_REVISION": profile["runtime"]["revision"],
-        "LLM_LAB_RUNTIME_CMAKE_ARGS": " ".join(profile["runtime"].get("cmakeArgs", [])),
+        "LLM_LAB_RUNTIME_CMAKE_ARGS": " ".join(cmake_args),
         "LLM_LAB_RUNTIME_IMAGE": f"local/local-llm-agent-lab:{profile['id']}",
         "LLM_LAB_API_KEY": settings.api_key,
     })

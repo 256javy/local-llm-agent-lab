@@ -49,6 +49,12 @@
 
 - [x] Harness y fixtures iniciales.
 - [x] Suite reproducible de performance para los tres modelos descargados.
+- [x] Suites locales `quality`, `tools`, `context` y `soak`, con p95 y metadata
+      efectiva de la imagen.
+- [ ] Integrar ejecuciones versionadas de llama-bench, lm-evaluation-harness,
+      BFCL y HumanEval+/MBPP+ sin descargas implícitas.
+- [ ] Ejecutar SWE-bench Mini/Verified con un agente fijado y separar el score
+      del modelo del score del sistema completo.
 - [~] Fixture agentic de tool calling validado; falta Pi end-to-end.
 - [ ] Comparar llama.cpp, Ollama y LiteRT-LM con condiciones equivalentes.
 
@@ -59,6 +65,9 @@
 - [ ] Adaptador LiteRT-LM.
 - [ ] Canales stable/candidate/experimental.
 - [~] Reporte explícito de almacenamiento; limpieza diferida por seguridad.
+- [x] Archivo frío configurable por perfil con restauración explícita.
+- [~] Catálogo público de candidatos para 16 GB; falta fijar GGUF, revisión y
+      checksum antes de crear perfiles experimentales.
 
 ## Fase 6 — TUI v2
 

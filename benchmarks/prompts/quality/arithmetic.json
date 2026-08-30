@@ -1,0 +1,8 @@
+{
+  "id": "quality-arithmetic",
+  "messages": [{"role": "user", "content": "Calcula 37 × 19. Responde únicamente con el número."}],
+  "max_tokens": 32,
+  "temperature": 0,
+  "chat_template_kwargs": {"enable_thinking": false},
+  "assert": {"contentEquals": "703"}
+}

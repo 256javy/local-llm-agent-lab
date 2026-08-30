@@ -10,6 +10,11 @@
 `doctor` no cambia el host. Comprueba perfiles, herramientas, daemon Docker,
 GPU, puerto y almacenamiento.
 
+Los perfiles fijan `sm_120` para la RTX 5060 Ti. En otra GPU NVIDIA determina
+primero su compute capability y configura, por ejemplo,
+`LLM_LAB_CUDA_ARCHITECTURES=89`; el siguiente build recompilará llama.cpp para
+ese target. No copies `120` solo por tener 16 GB de VRAM.
+
 ## Ciclo de vida
 
 ```bash
@@ -83,3 +88,26 @@ docker image inspect local/local-llm-agent-lab:<perfil> \
 
 El `system_fingerprint` de las respuestas y los logs de arranque permiten
 corroborar también la revisión efectiva de llama.cpp.
+
+## Archivo frío en otro disco
+
+`LLM_LAB_DATA_DIR` contiene los modelos activos. `LLM_LAB_ARCHIVE_DIR` puede
+apuntar a un HDD para conservar modelos de uso ocasional sin mantenerlos en el
+SSD. En el equipo de referencia puede configurarse, por ejemplo:
+
+```bash
+LLM_LAB_ARCHIVE_DIR=/mnt/storage-lv/local-llm-agent-lab-archive
+```
+
+Con el servidor detenido:
+
+```bash
+./bin/llm-lab storage archive qwen-3.8-27b-iq3xxs-mtp
+./bin/llm-lab storage report
+./bin/llm-lab storage restore qwen-3.8-27b-iq3xxs-mtp
+```
+
+Las operaciones mueven el directorio completo del perfil, funcionan entre
+filesystems y se niegan a sobrescribir un destino existente. `start` no restaura
+automáticamente un modelo archivado: esa separación evita copias grandes por
+accidente. El cache de Hugging Face permanece en el almacenamiento activo.

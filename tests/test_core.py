@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from llm_lab.core import LabError, http_json, load_profiles, load_settings, parse_env_file, port_available, validate_profile
+from llm_lab.core import LabError, compose_env, http_json, load_profiles, load_settings, parse_env_file, port_available, validate_profile
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -27,6 +27,20 @@ class EnvironmentTests(unittest.TestCase):
             with mock.patch.dict(os.environ, {"LLM_LAB_PORT": "19001"}):
                 settings = load_settings(root)
             self.assertEqual(settings.port, 19001)
+
+    def test_archive_directory_is_optional_and_resolved(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            with mock.patch.dict(os.environ, {"LLM_LAB_ARCHIVE_DIR": temporary}, clear=False):
+                settings = load_settings(ROOT)
+            self.assertEqual(settings.archive_dir, pathlib.Path(temporary).resolve())
+
+    def test_cuda_architecture_override_replaces_profile_default(self) -> None:
+        with mock.patch.dict(os.environ, {"LLM_LAB_CUDA_ARCHITECTURES": "89"}, clear=False):
+            settings = load_settings(ROOT)
+        profile = load_profiles(ROOT)["gemma-4-12b-qat-mtp"]
+        arguments = compose_env(settings, profile)["LLM_LAB_RUNTIME_CMAKE_ARGS"]
+        self.assertIn("-DCMAKE_CUDA_ARCHITECTURES=89", arguments)
+        self.assertNotIn("-DCMAKE_CUDA_ARCHITECTURES=120", arguments)
 
     def test_invalid_port_fails(self) -> None:
         with mock.patch.dict(os.environ, {"LLM_LAB_PORT": "99999"}):
