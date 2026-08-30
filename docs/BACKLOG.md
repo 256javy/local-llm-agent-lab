@@ -10,8 +10,9 @@
 
 Estado confirmado al 2026-08-30:
 
-- La rama `feature/cuda13-llama-cpp-upgrade` está publicada y todavía no tiene
-  PR; usa `git log origin/main..HEAD` para obtener el estado exacto de commits.
+- El PR [#1](https://github.com/256javy/local-llm-agent-lab/pull/1) reúne el
+  upgrade CUDA 13 y su evidencia; usa `git log origin/main..HEAD` para obtener
+  el estado exacto de commits mientras permanezca abierto.
 - CUDA 13.0.3 y llama.cpp b10689 están validados en la RTX 5060 Ti con Gemma
   12B, Qwen 3.6 y Qwen 3.8. Gemma 26B es el único perfil cuyo GGUF no está
   descargado.
@@ -37,7 +38,7 @@ evidencia contradictoria.
 
 ### I-01 — PR del upgrade CUDA 13
 
-- [ ] Abrir un PR de `feature/cuda13-llama-cpp-upgrade` hacia `main`.
+- [x] Abrir un PR de `feature/cuda13-llama-cpp-upgrade` hacia `main`.
 - Alcance ya cerrado: runtime CUDA/llama.cpp, revalidación de tres modelos,
   suites locales ampliadas, archivo frío, portabilidad CUDA, licencia y créditos.
 - Antes del PR: repetir la validación rápida, revisar `git diff
