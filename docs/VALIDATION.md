@@ -43,8 +43,41 @@ final fue de 19,62 GiB.
 
 - Gemma: llama.cpp `0ab9d6fed73dbc5dc8026c868cb10a6728c4ed48`.
 - Qwen: head MTP `2dff7ff8f90ce6daefd6adb097d58a4276e5dd2d`.
-- Los builds usan CUDA 12.8.1 y `CMAKE_CUDA_ARCHITECTURES=120`.
+- Los builds validados en esta sesión usaron CUDA 12.8.1 y
+  `CMAKE_CUDA_ARCHITECTURES=120`.
 
 Qwen requiere desactivar tanto `LLAMA_BUILD_WEBUI` como `LLAMA_BUILD_UI` por
 compatibilidad con esa revisión. Su GGUF contiene los heads MTP; no usa el
 archivo draft externo empleado por Gemma.
+
+## Upgrade CUDA 13 y llama.cpp
+
+El runtime vigente fija CUDA 13.0.3 y llama.cpp `b10689`, revisión
+`57291f2644af8c9df0dd8d44395881c5bdcf0ecd`, para los tres perfiles. Se mantiene
+`CMAKE_CUDA_ARCHITECTURES=120`; Qwen conserva `draft-mtp` con el MTP embebido y
+Gemma conserva su modelo draft separado. La UI embebida y su descarga mutable
+están deshabilitadas porque el servidor solo publica la API local. Los
+resultados de la sección anterior son el baseline de CUDA 12.8.1 y no deben
+atribuirse al runtime actualizado sin repetir smoke, VRAM, tool calling y
+performance.
+
+Validación del 2026-08-30 sobre la misma RTX 5060 Ti y driver 580.173.02:
+
+- Build correcto con toolkit CUDA 13.0.88 y target efectivo `sm_120a`; no se
+  observó el warning de targets GPU anteriores a `sm_75`.
+- Las instancias CUDA `mxfp4` y `nvfp4` compilaron correctamente.
+- Gemma 12B y Qwen pasaron health, smoke, tool calling y performance; MTP quedó
+  activo en ambos.
+- Los GGUF existentes se reutilizaron desde el volumen persistente, sin nuevas
+  descargas de modelos.
+- El mismo build de llama.cpp se reutilizó íntegramente entre perfiles.
+
+| Perfil | VRAM observada | Decode mediano corto | Aceptación draft acumulada |
+|---|---:|---:|---:|
+| Gemma 4 12B QAT + MTP | 8.934 MiB | 108,68 tok/s | 48/48 |
+| Qwen 3.6 35B-A3B Q2 + MTP | 14.112 MiB | 183,31 tok/s | 39/45 |
+
+Estas cifras proceden del fixture corto `performance`, con cache de prompt en
+las repeticiones, y no sustituyen un benchmark de contexto largo. Gemma 26B no
+estaba descargado y conserva pendiente su validación pesada para evitar una
+descarga implícita de varios GiB.

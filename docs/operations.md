@@ -20,10 +20,11 @@ GPU, puerto y almacenamiento.
 ./bin/llm-lab stop
 ```
 
-La primera construcción puede compilar llama.cpp y el primer inicio puede
-descargar varios GiB. Qwen y Gemma fijan revisiones distintas porque sus
-formatos MTP tienen contratos diferentes. `stop` y `switch` preservan la cache
-y verifican que la VRAM vuelva cerca del nivel previo antes de continuar.
+La primera construcción compila la revisión fijada de llama.cpp y el primer
+inicio puede descargar varios GiB. Los perfiles comparten una revisión que
+soporta sus contratos MTP y se compila de forma nativa para `sm_120`. `stop` y
+`switch` preservan la cache y verifican que la VRAM vuelva cerca del nivel
+previo antes de continuar.
 
 ## Conflictos
 
@@ -67,3 +68,6 @@ inspeccionar tamaños:
 ```
 
 No borres volúmenes o caches como parte de una recuperación ordinaria.
+Reconstruir la imagen para actualizar CUDA o llama.cpp tampoco borra esos
+artefactos: si el perfil conserva el mismo identificador y nombre de archivo,
+el entrypoint reutiliza el GGUF existente bajo `models/<perfil>/`.

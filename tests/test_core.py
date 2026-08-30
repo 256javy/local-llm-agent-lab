@@ -40,6 +40,22 @@ class ProfileTests(unittest.TestCase):
         profiles = load_profiles(ROOT)
         self.assertEqual(set(profiles), {"gemma-4-12b-qat-mtp", "gemma-4-26b-a4b-quality", "qwen-3.6-moe-2bit"})
 
+    def test_repository_profiles_pin_llama_cpp_for_sm120(self) -> None:
+        profiles = load_profiles(ROOT)
+        revisions = {profile["runtime"]["revision"] for profile in profiles.values()}
+        self.assertEqual(revisions, {"57291f2644af8c9df0dd8d44395881c5bdcf0ecd"})
+        cmake_args = {tuple(profile["runtime"]["cmakeArgs"]) for profile in profiles.values()}
+        self.assertEqual(len(cmake_args), 1)
+        for profile in profiles.values():
+            self.assertIn("-DCMAKE_CUDA_ARCHITECTURES=120", profile["runtime"]["cmakeArgs"])
+
+    def test_docker_runtime_uses_cuda_13(self) -> None:
+        dockerfile = (ROOT / "docker/llama-cpp/Dockerfile").read_text(encoding="utf-8")
+        self.assertIn("nvidia/cuda:13.0.3-devel-ubuntu24.04", dockerfile)
+        self.assertIn("nvidia/cuda:13.0.3-runtime-ubuntu24.04", dockerfile)
+        self.assertIn("LLAMA_USE_PREBUILT_UI=OFF", dockerfile)
+        self.assertNotIn("LLAMA_BUILD_WEBUI", dockerfile)
+
     def test_missing_fields_are_reported(self) -> None:
         errors = validate_profile({"id": "broken"})
         self.assertTrue(errors)
