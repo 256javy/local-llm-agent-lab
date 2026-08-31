@@ -102,6 +102,81 @@ class TraceStore:
             shutil.rmtree(staging, ignore_errors=True)
             raise
 
+    def list_traces(self) -> list[dict[str, Any]]:
+        if not self.traces_dir.exists():
+            return []
+        manifests = []
+        for path in sorted(self.traces_dir.iterdir()):
+            if not path.is_dir() or path.is_symlink() or path.name.startswith("."):
+                continue
+            manifests.append(self._read_manifest(path.name))
+        return sorted(manifests, key=lambda value: (value.get("createdAt", ""), value["traceId"]), reverse=True)
+
+    def show_trace(self, trace_id: str, *, include_events: bool = True) -> dict[str, Any]:
+        manifest = self._read_manifest(trace_id)
+        if not include_events:
+            return manifest
+        events_path = self.traces_dir / trace_id / "normalized" / "events.jsonl"
+        events: list[dict[str, Any]] = []
+        try:
+            for line_number, line in enumerate(events_path.read_text(encoding="utf-8").splitlines(), start=1):
+                if not line.strip():
+                    continue
+                event = json.loads(line)
+                if not isinstance(event, dict):
+                    raise ValueError("el evento no es un objeto")
+                validate_event(event, expected_sequence=len(events))
+                events.append(event)
+        except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
+            raise LabError(f"No se pudieron leer los eventos de {trace_id}: {exc}", 2) from exc
+        if sha256_file(events_path) != manifest["normalized"]["sha256"]:
+            raise LabError(f"El hash de eventos no coincide con el manifest: {trace_id}", 2)
+        if len(events) != manifest["normalized"]["eventCount"]:
+            raise LabError(f"El conteo de eventos no coincide con el manifest: {trace_id}", 2)
+        trace_path = self.traces_dir / trace_id
+        for entry in manifest["raw"]:
+            raw_path = trace_path / entry["path"]
+            if raw_path.is_symlink() or not raw_path.is_file() or sha256_file(raw_path) != entry["sha256"]:
+                raise LabError(f"La evidencia raw no coincide con el manifest: {entry['path']}", 2)
+        return {"manifest": manifest, "events": events}
+
+    def _read_manifest(self, trace_id: str) -> dict[str, Any]:
+        self._validate_trace_id(trace_id)
+        trace_path = self.traces_dir / trace_id
+        manifest_path = trace_path / "manifest.json"
+        if trace_path.is_symlink() or manifest_path.is_symlink() or not manifest_path.is_file():
+            raise LabError(f"Trace no encontrado: {trace_id}", 1)
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise LabError(f"Manifest de trace inválido ({trace_id}): {exc}", 2) from exc
+        if not isinstance(manifest, dict) or manifest.get("traceId") != trace_id or manifest.get("kind") != "trace-manifest":
+            raise LabError(f"Manifest de trace inválido: {trace_id}", 2)
+        source = manifest.get("source")
+        normalized = manifest.get("normalized")
+        raw = manifest.get("raw")
+        if (
+            manifest.get("schemaVersion") != SCHEMA_VERSION
+            or not isinstance(source, dict)
+            or not all(isinstance(source.get(field), str) and source[field] for field in ("client", "version", "captureCommand"))
+            or not isinstance(normalized, dict)
+            or normalized.get("eventsPath") != "normalized/events.jsonl"
+            or not isinstance(normalized.get("eventCount"), int)
+            or not isinstance(normalized.get("sha256"), str)
+            or not isinstance(raw, list)
+            or not all(
+                isinstance(item, dict)
+                and isinstance(item.get("path"), str)
+                and len(pathlib.PurePosixPath(item["path"]).parts) == 2
+                and pathlib.PurePosixPath(item["path"]).parts[0] == "raw"
+                and pathlib.PurePosixPath(item["path"]).name not in {".", ".."}
+                and isinstance(item.get("sha256"), str)
+                for item in raw
+            )
+        ):
+            raise LabError(f"Manifest de trace inválido: {trace_id}", 2)
+        return manifest
+
     @staticmethod
     def _validate_trace_id(trace_id: str) -> None:
         if not TRACE_ID_PATTERN.fullmatch(trace_id) or trace_id in {".", ".."}:

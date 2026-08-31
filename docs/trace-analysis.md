@@ -46,9 +46,9 @@ Estas interfaces externas pueden cambiar. Cada trace guardará nombre, versión,
 comando de captura y hash del raw; un adaptador incompatible debe fallar con un
 mensaje accionable, nunca descartar eventos silenciosamente.
 
-Evidencia upstream consultada el 2026-08-30:
+Evidencia upstream verificada de nuevo el 2026-08-31:
 
-- [formato de sesiones Pi](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/session.md),
+- [formato de sesiones Pi](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/session-format.md),
   [SDK/eventos Pi](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/sdk.md)
   y [compaction/branch summaries](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/compaction.md);
 - [CLI oficial de OpenCode](https://opencode.ai/docs/cli/), incluyendo
@@ -84,6 +84,34 @@ un directorio temporal, rechaza IDs existentes, calcula SHA-256 para raw y
 eventos normalizados y aplica permisos `0700` a directorios, `0600` a metadata
 y eventos, y `0400` a la copia raw. Los adaptadores de clientes serán quienes
 construyan estos artefactos; esta capa no accede por sí sola a sesiones reales.
+
+## Importación post-hoc disponible
+
+La CLI importa sesiones terminadas sin modificar la fuente:
+
+```bash
+./bin/llm-lab trace capture pi --session <id-o-ruta-jsonl>
+./bin/llm-lab trace capture opencode --session <id>
+./bin/llm-lab trace list [--json]
+./bin/llm-lab trace show <trace-id> [--manifest-only] [--json]
+```
+
+Para Pi, `--session` acepta el ID del header, el nombre del archivo bajo
+`~/.pi/agent/sessions` o una ruta exacta. El adaptador tolera versiones del
+formato desde v1 y registra la versión encontrada; normaliza mensajes, tool
+calls/resultados, reasoning exportado, cambios de modelo/thinking, compactions
+y ramas. Un tipo desconocido no se descarta: queda como `system_event`, con
+referencia a la línea raw y una advertencia en el manifest.
+
+Para OpenCode, la captura detecta la versión instalada, comprueba el ID mediante
+`session list --format json` y conserva la salida original de `export`. Luego
+normaliza mensajes y partes conocidas. No usa `--sanitize`: el raw inmutable es
+la evidencia fuente y la redacción exportable todavía no está implementada.
+
+`trace list` lee manifests y `trace show` valida y presenta los eventos. Ambos
+admiten `--json`; `--store` permite inspeccionar otro store explícito. Los tests
+usan fixtures totalmente sintéticos de Pi 0.84/formato v3 y OpenCode 1.18, sin
+acceder a sesiones reales.
 
 ## Eventos normalizados
 

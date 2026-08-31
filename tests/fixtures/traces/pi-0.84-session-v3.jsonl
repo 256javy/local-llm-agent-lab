@@ -1,0 +1,9 @@
+{"type":"session","version":3,"id":"pi-session-fixture","timestamp":"2026-08-31T12:00:00.000Z","cwd":"/synthetic/project"}
+{"type":"message","id":"pi-user-1","parentId":null,"timestamp":"2026-08-31T12:00:01.000Z","message":{"role":"user","content":"Revisa el fixture","timestamp":1788177601000}}
+{"type":"message","id":"pi-assistant-1","parentId":"pi-user-1","timestamp":"2026-08-31T12:00:02.000Z","message":{"role":"assistant","content":[{"type":"thinking","thinking":"Debo inspeccionarlo"},{"type":"text","text":"Voy a leerlo."},{"type":"toolCall","id":"call-1","name":"read","arguments":{"path":"fixture.txt"}}],"provider":"local-lab","model":"synthetic-model","stopReason":"toolUse","timestamp":1788177602000}}
+{"type":"message","id":"pi-tool-1","parentId":"pi-assistant-1","timestamp":"2026-08-31T12:00:03.000Z","message":{"role":"toolResult","toolCallId":"call-1","toolName":"read","content":[{"type":"text","text":"contenido sintético"}],"isError":false,"timestamp":1788177603000}}
+{"type":"model_change","id":"pi-model-1","parentId":"pi-tool-1","timestamp":"2026-08-31T12:00:04.000Z","provider":"local-lab","modelId":"synthetic-model-2"}
+{"type":"thinking_level_change","id":"pi-thinking-1","parentId":"pi-model-1","timestamp":"2026-08-31T12:00:05.000Z","thinkingLevel":"high"}
+{"type":"compaction","id":"pi-compaction-1","parentId":"pi-thinking-1","timestamp":"2026-08-31T12:00:06.000Z","summary":"Resumen sintético","tokensBefore":1200,"firstKeptEntryId":"pi-tool-1"}
+{"type":"branch_summary","id":"pi-branch-1","parentId":"pi-user-1","timestamp":"2026-08-31T12:00:07.000Z","fromId":"pi-compaction-1","summary":"Rama sintética"}
+{"type":"future_entry","id":"pi-future-1","parentId":"pi-branch-1","timestamp":"2026-08-31T12:00:08.000Z","value":"preservado en raw"}

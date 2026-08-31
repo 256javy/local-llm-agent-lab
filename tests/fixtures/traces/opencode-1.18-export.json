@@ -1,0 +1,24 @@
+{
+  "info": {
+    "id": "ses_fixture",
+    "version": "1.18.25",
+    "title": "Sesión sintética",
+    "directory": "/synthetic/project",
+    "time": {"created": 1788177600000, "updated": 1788177605000}
+  },
+  "messages": [
+    {
+      "info": {"id": "msg_user", "sessionID": "ses_fixture", "role": "user", "time": {"created": 1788177601000}},
+      "parts": [{"id": "part_user", "type": "text", "text": "Revisa el fixture"}]
+    },
+    {
+      "info": {"id": "msg_assistant", "sessionID": "ses_fixture", "role": "assistant", "providerID": "local-lab", "modelID": "synthetic-model", "time": {"created": 1788177602000}},
+      "parts": [
+        {"id": "part_reasoning", "type": "reasoning", "text": "Debo inspeccionarlo"},
+        {"id": "part_text", "type": "text", "text": "Voy a leerlo."},
+        {"id": "part_tool", "type": "tool", "callID": "call-1", "tool": "read", "state": {"status": "completed", "input": {"path": "fixture.txt"}, "output": "contenido sintético", "title": "read"}},
+        {"id": "part_future", "type": "future-part", "value": "preservado en raw"}
+      ]
+    }
+  ]
+}

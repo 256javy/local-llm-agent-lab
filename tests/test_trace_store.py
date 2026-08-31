@@ -108,6 +108,44 @@ class TraceStoreTests(unittest.TestCase):
                     events=[],
                 )
 
+    def test_list_and_show_read_complete_traces(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            raw = root / "source.json"
+            raw.write_text("{}", encoding="utf-8")
+            store = TraceStore(root / ".local")
+            store.create_trace(
+                trace_id="trace-readable",
+                source={"client": "opencode", "version": "1.18.25", "captureCommand": "fixture"},
+                raw_files={"source.json": raw},
+                events=[event(0)],
+            )
+
+            self.assertEqual([item["traceId"] for item in store.list_traces()], ["trace-readable"])
+            payload = store.show_trace("trace-readable")
+            self.assertEqual(payload["manifest"]["traceId"], "trace-readable")
+            self.assertEqual(payload["events"][0]["eventId"], "event-0")
+            with self.assertRaisesRegex(LabError, "no encontrado"):
+                store.show_trace("missing")
+
+    def test_show_rejects_modified_raw_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            raw = root / "source.json"
+            raw.write_text("{}", encoding="utf-8")
+            store = TraceStore(root / ".local")
+            trace = store.create_trace(
+                trace_id="trace-tampered",
+                source={"client": "pi", "version": "0.84.4", "captureCommand": "fixture"},
+                raw_files={"source.json": raw},
+                events=[event(0)],
+            )
+            copied = trace / "raw" / "source.json"
+            copied.chmod(0o600)
+            copied.write_text('{"changed":true}', encoding="utf-8")
+            with self.assertRaisesRegex(LabError, "evidencia raw"):
+                store.show_trace("trace-tampered")
+
 
 if __name__ == "__main__":
     unittest.main()
