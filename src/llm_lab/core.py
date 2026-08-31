@@ -304,6 +304,15 @@ def docker_container_running() -> bool:
     return result.returncode == 0 and result.stdout.strip() == "true"
 
 
+def docker_project_running() -> bool:
+    result = run(
+        ["docker", "ps", "-q", "--filter", "label=com.docker.compose.project=local-llm-agent-lab"],
+        check=False,
+        capture=True,
+    )
+    return result.returncode == 0 and bool(result.stdout.strip())
+
+
 def gpu_info() -> dict[str, Any] | None:
     if not shutil.which("nvidia-smi"):
         return None

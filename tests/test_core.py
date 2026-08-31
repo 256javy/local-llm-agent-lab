@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from llm_lab.core import LabError, compose_env, http_json, load_profiles, load_settings, parse_env_file, port_available, validate_profile
+from llm_lab.core import LabError, compose_env, docker_project_running, http_json, load_profiles, load_settings, parse_env_file, port_available, validate_profile
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -68,6 +68,8 @@ class ProfileTests(unittest.TestCase):
         self.assertIn("nvidia/cuda:13.0.3-devel-ubuntu24.04", dockerfile)
         self.assertIn("nvidia/cuda:13.0.3-runtime-ubuntu24.04", dockerfile)
         self.assertIn("LLAMA_USE_PREBUILT_UI=OFF", dockerfile)
+        self.assertIn("--target llama-server llama-bench", dockerfile)
+        self.assertIn("/usr/local/bin/llama-bench", dockerfile)
         self.assertNotIn("LLAMA_BUILD_WEBUI", dockerfile)
 
     def test_missing_fields_are_reported(self) -> None:
@@ -97,6 +99,14 @@ class NetworkTests(unittest.TestCase):
         ):
             with self.assertRaisesRegex(LabError, "Endpoint no disponible"):
                 http_json("http://127.0.0.1:18080/health")
+
+    @mock.patch("llm_lab.core.run")
+    def test_project_container_detection_uses_compose_label(self, mocked_run: mock.Mock) -> None:
+        mocked_run.return_value.returncode = 0
+        mocked_run.return_value.stdout = "container-id\n"
+        self.assertTrue(docker_project_running())
+        command = mocked_run.call_args.args[0]
+        self.assertIn("label=com.docker.compose.project=local-llm-agent-lab", command)
 
 
 if __name__ == "__main__":

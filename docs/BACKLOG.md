@@ -58,7 +58,7 @@ evidencia contradictoria.
 - [x] Documentar las tres capas (inferencia nativa, harness HTTP y trazas reales),
       sus contratos y el plan incremental en
       `docs/plans/trace-and-benchmark-harness.md`.
-- [ ] **P0** Integrar `llama-bench` de la misma build/revisión del runtime y
+- [x] **P0** Integrar `llama-bench` de la misma build/revisión del runtime y
       guardar JSON con `pp512`, `pp2048`, `pp8192`, `tg128`, `tg512` y depth
       8K/16K; no descargar modelos, no ejecutar con servidor activo y no
       presentar MTP como medido.
@@ -244,7 +244,7 @@ evidencia contradictoria.
 - [x] Suite reproducible de performance para los tres modelos descargados.
 - [x] Suites locales `quality`, `tools`, `context` y `soak`, con p95 y metadata
       efectiva de la imagen.
-- [ ] **P0** I-02: integrar `llama-bench` nativo de la misma build del runtime.
+- [x] **P0** I-02: integrar `llama-bench` nativo de la misma build del runtime.
 - [ ] **P2** I-02: integrar ejecuciones versionadas de
       lm-evaluation-harness, BFCL y HumanEval+/MBPP+ sin descargas implícitas.
 - [ ] **P3** Ejecutar SWE-bench Mini/Verified con un agente fijado y separar el score

@@ -51,6 +51,12 @@ class CliTests(unittest.TestCase):
         for suite in ("quality", "tools", "context", "soak"):
             self.assertIn(suite, result.stdout)
 
+    def test_native_bench_help_exposes_reproducibility_controls(self) -> None:
+        result = invoke("bench", "--help")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for option in ("--matrix", "--output", "--repetitions", "--no-warmup"):
+            self.assertIn(option, result.stdout)
+
     def test_storage_report_json(self) -> None:
         result = invoke("storage", "report", "--json")
         self.assertEqual(result.returncode, 0, result.stderr)

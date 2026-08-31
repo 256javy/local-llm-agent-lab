@@ -2,7 +2,7 @@
 
 ## Tres capas que no se mezclan
 
-- `llm-lab bench <perfil>` ejecutará `llama-bench` dentro del runtime: mide
+- `llm-lab bench <perfil>` ejecuta `llama-bench` dentro del runtime: mide
   inferencia nativa, no calidad ni speculative decoding del servidor.
 - `llm-lab benchmark <perfil> --suite ...` usa `llama-server` por HTTP y mide
   fixtures controlados del perfil servido.
@@ -52,29 +52,76 @@ son gates operativos del proyecto; no reemplazan benchmarks académicos.
 
 ## Comparaciones estándar
 
-- `llama-bench` debe compilarse junto a `llama-server`, reutilizar el GGUF ya
-  preparado y guardar su JSON raw bajo `benchmark-results/llama-bench/`.
+- `llama-bench` se compila junto a `llama-server`, reutiliza el GGUF ya
+  preparado y guarda su JSON raw bajo `benchmark-results/llama-bench/`.
   La matriz central es `pp512`, `pp2048`, `pp8192`, `tg128`, `tg512` y
   `tg128` con depth 8192/16384, cinco repeticiones y recorte por el
   `server.contextSize` del perfil.
 - La salida estructurada upstream contiene commit/build, CPU/GPU/backends,
   metadata del modelo, batch/ubatch, KV, GPU layers, flash attention, prompt,
-  generation, depth, timestamps, media y desviación. El manifest local añadirá
-  profile ID y hash del GGUF cuando calcularlo sea razonable. No se parseará la
-  tabla Markdown si `-o json` está disponible.
+  generation, depth, timestamps, media y desviación. El manifest local añade
+  profile ID y hash del GGUF. No se parsea la tabla Markdown: siempre se usa
+  `-o json`.
 - Solo se traducen argumentos compatibles (`ngl`, `fa`, `ctk`, `ctv`, `sm`,
   `mg` y mmap si aplica). Sampling, Jinja, `--spec-type draft-mtp` y
-  `--spec-draft-n-max` son del servidor y no deben aparecer como rendimiento
+  `--spec-draft-n-max` son del servidor y no aparecen como rendimiento
   MTP de `llama-bench`.
 - Una ejecución normal con warmup, `--no-warmup` y el arranque frío externo de
-  proceso/modelo son mediciones diferentes. La primera integración no necesita
-  medir cold start.
+  proceso/modelo son mediciones diferentes. Esta integración no mide cold
+  start.
+
+Con el servidor detenido y el runtime del perfil ya construido:
+
+```bash
+./bin/llm-lab bench gemma-4-12b-qat-mtp
+```
+
+El comando toma el lock de control y rechaza cualquier contenedor administrado
+activo. Nunca descarga modelos: si falta el GGUF indica el comando `pull`
+correspondiente. La matriz versionada está en `benchmarks/native-matrix.json` y
+puede seleccionarse explícitamente con `--matrix standard`.
+
+Cada caso se guarda de forma atómica en un JSON independiente. Repetir el mismo
+perfil, matriz, cantidad de repeticiones y modo de warmup reanuda los casos ya
+válidos. El directorio de la ejecución contiene además `manifest.json`, con la
+revisión, hash del modelo, traducción de argumentos y resultados, y
+`summary.md`, con una tabla legible. Para una ruta local distinta:
+
+```bash
+./bin/llm-lab bench qwen-3.6-moe-2bit --output /ruta/resultados
+```
+
+`--repetitions` permite una corrida diagnóstica más corta. `--no-warmup` crea
+otra ejecución y no se presenta como cold start. Sampling, Jinja y MTP quedan
+registrados como argumentos ignorados; `mtpMeasured` siempre es `false` en el
+manifest nativo.
+
+### Baseline nativo (2026-08-31)
+
+Matriz `standard`, cinco repeticiones, RTX 5060 Ti 16 GB, revisión de runtime
+b10689. Valores en tokens/s promedio; los JSON crudos quedan fuera de Git bajo
+`benchmark-results/llama-bench/`.
+
+| Caso | gemma-4-12b-qat-mtp | qwen-3.6-moe-2bit | qwen-3.8-27b-iq3xxs-mtp |
+| --- | ---: | ---: | ---: |
+| pp512 | 2328.30 | 2278.32 | 922.61 |
+| pp2048 | 2357.90 | 2341.50 | 921.20 |
+| pp8192 | 2220.27 | 2230.87 | 892.10 |
+| tg128 | 54.14 | 117.53 | 32.10 |
+| tg512 | 52.94 | 115.63 | 32.03 |
+| tg128-d8192 | 50.16 | 107.86 | 30.24 |
+| tg128-d16384 | 48.10 | 99.88 | 28.53 |
+
+MTP no está medido en ninguna de estas cifras: `llama-bench` no ejecuta el
+decodificador especulativo del perfil y el manifest lo refleja con
+`mtpMeasured: false`.
 
 Referencia de viabilidad: la
 [documentación oficial de llama-bench](https://github.com/ggml-org/llama.cpp/blob/master/tools/llama-bench/README.md)
 documenta JSON/JSONL, cinco repeticiones predeterminadas, depth, tipos KV,
-flash attention y la metadata anterior. Antes de implementar se debe comprobar
-la ayuda de la revisión fijada b10689, porque upstream puede cambiar flags.
+flash attention y la metadata anterior. La traducción de flags está validada
+contra la revisión fijada b10689; upstream puede cambiarlos en revisiones
+posteriores.
 - Usa `lm-evaluation-harness` contra el endpoint OpenAI-compatible para IFEval,
   GSM8K, ARC Challenge y una muestra fijada de MMLU-Pro.
 - Usa BFCL para tool calling y HumanEval+/MBPP+ para código ejecutable.

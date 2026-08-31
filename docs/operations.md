@@ -102,6 +102,21 @@ Con el servidor detenido:
 ./bin/llm-lab storage restore qwen-3.8-27b-iq3xxs-mtp
 ```
 
+## Benchmark nativo
+
+Detén el servidor antes de ejecutar la matriz reproducible de `llama-bench`:
+
+```bash
+./bin/llm-lab stop
+./bin/llm-lab bench gemma-4-12b-qat-mtp
+```
+
+El benchmark usa exclusivamente el modelo ya preparado bajo
+`LLM_LAB_DATA_DIR`, no publica puertos y deja el servidor detenido al finalizar.
+Los resultados locales quedan ignorados por Git bajo
+`benchmark-results/llama-bench/`. Consulta [Benchmarking](benchmarking.md) para
+la matriz, reanudación y opciones.
+
 Las operaciones mueven el directorio completo del perfil, funcionan entre
 filesystems y se niegan a sobrescribir un destino existente. `start` no restaura
 automáticamente un modelo archivado: esa separación evita copias grandes por

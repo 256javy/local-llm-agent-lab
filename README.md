@@ -101,6 +101,17 @@ docker compose config --quiet
 ./bin/llm-lab config show --effective
 ```
 
+Los benchmarks nativos se ejecutan con el servidor detenido y nunca descargan
+modelos implícitamente:
+
+```bash
+./bin/llm-lab stop
+./bin/llm-lab bench gemma-4-12b-qat-mtp
+```
+
+La matriz y el formato de resultados se documentan en
+[Benchmarking](docs/benchmarking.md).
+
 ## Datos locales
 
 Por defecto, modelos, fuentes y caches se guardan bajo
