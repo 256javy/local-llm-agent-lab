@@ -112,6 +112,25 @@ modelos implícitamente:
 La matriz y el formato de resultados se documentan en
 [Benchmarking](docs/benchmarking.md).
 
+## Trazas de agentes
+
+Las sesiones existentes de Pi y OpenCode pueden importarse a un store local e
+inmutable bajo `.local/`. La captura preserva el JSON/JSONL original, genera
+eventos normalizados y no accede a la red:
+
+```bash
+./bin/llm-lab trace capture pi --session <id-o-ruta-jsonl>
+./bin/llm-lab trace capture opencode --session <id>
+./bin/llm-lab trace list
+./bin/llm-lab trace show <trace-id> --json
+```
+
+Los traces pueden contener código, prompts, resultados de herramientas y
+secretos. Permanecen ignorados por Git y todavía no deben compartirse: la
+redacción y los bundles exportables corresponden a una iniciativa posterior.
+Consulta [Análisis de trazas](docs/trace-analysis.md) para conocer formatos,
+procedencia y limitaciones.
+
 ## Datos locales
 
 Por defecto, modelos, fuentes y caches se guardan bajo

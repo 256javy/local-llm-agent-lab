@@ -113,6 +113,11 @@ Store + schemas + fixtures; adaptador Pi JSONL 0.84.x; adaptador OpenCode por
 ausentes tolerados. Cierre: ambos fixtures producen eventos ordenados y un
 manifest validado sin acceder a sesiones reales en tests.
 
+Estado: completado. El store, los adaptadores, fixtures sintéticos y comandos
+`trace capture/list/show` están implementados. Pi acepta ID o ruta exacta;
+OpenCode valida el ID con `session list --format json` antes de ejecutar
+`export`. La captura exacta del estado Git y la redacción siguen en S3.
+
 ### S3. Captura exacta y privacidad
 
 `begin`/`finish`, snapshots Git read-only, contexto efectivo, permisos locales,

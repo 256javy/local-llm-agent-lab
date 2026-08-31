@@ -14,11 +14,15 @@ consumidores GPU a la vez.
 
 ## Punto de partida para nuevas sesiones
 
-Estado confirmado al 2026-08-30:
+Estado confirmado al 2026-08-31:
 
-- Los PR [#1](https://github.com/256javy/local-llm-agent-lab/pull/1) y
-  [#2](https://github.com/256javy/local-llm-agent-lab/pull/2) están fusionados:
-  contienen el upgrade CUDA 13 y la promoción de la TUI Rust, respectivamente.
+- Los PR [#1](https://github.com/256javy/local-llm-agent-lab/pull/1),
+  [#2](https://github.com/256javy/local-llm-agent-lab/pull/2),
+  [#4](https://github.com/256javy/local-llm-agent-lab/pull/4) y
+  [#5](https://github.com/256javy/local-llm-agent-lab/pull/5) están fusionados:
+  contienen el upgrade CUDA 13, la promoción de la TUI Rust, `llama-bench`
+  nativo y la base inmutable del store de trazas, respectivamente. El PR #3
+  documentó el roadmap que conecta benchmarks y trazas.
 - CUDA 13.0.3 y llama.cpp b10689 están validados en la RTX 5060 Ti con Gemma
   12B, Qwen 3.6 y Qwen 3.8. Gemma 26B es el único perfil cuyo GGUF no está
   descargado.
@@ -136,15 +140,15 @@ evidencia contradictoria.
 
 - [x] Implementar store local versionado e inmutable bajo `.local/`,
       manifests, hashes, escrituras atómicas y eventos JSONL con procedencia.
-- [ ] **P0** Implementar adaptador Pi para JSONL 0.84.x con mensajes, tools,
+- [x] Implementar adaptador Pi para JSONL 0.84.x con mensajes, tools,
       cambios de modelo/thinking, compactions, ramas y tipos desconocidos.
-- [ ] **P0** Implementar adaptador OpenCode usando `session list`/`export`, con
+- [x] Implementar adaptador OpenCode usando `session list`/`export`, con
       detección de versión/capacidades y preservación del export original.
-- [ ] **P0** Exponer `trace capture`, `list` y `show`, con `--help`, errores
+- [x] Exponer `trace capture`, `list` y `show`, con `--help`, errores
       accionables y fixtures totalmente sintéticos.
 - Empezar por `docs/trace-analysis.md` y el slice S2 del plan.
-- Aceptación: ambos fixtures producen manifests/eventos validados, ordenados y
-  trazables al raw sin acceder a sesiones reales durante tests.
+- Aceptación cumplida: ambos fixtures producen manifests/eventos validados,
+  ordenados y trazables al raw sin acceder a sesiones reales durante tests.
 
 ### I-09 — Captura exacta, contexto y privacidad
 

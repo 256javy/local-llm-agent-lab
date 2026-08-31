@@ -34,6 +34,7 @@ from .core import (
     write_state,
 )
 from .native_bench import execute_native_bench
+from .traces import TraceStore, capture_opencode, capture_pi
 
 
 def print_json(value: Any) -> None:
@@ -411,6 +412,44 @@ def command_bench(settings: Settings, args: argparse.Namespace) -> None:
     print(f"Benchmark nativo guardado en {manifest}")
 
 
+def command_trace(settings: Settings, args: argparse.Namespace) -> None:
+    store = TraceStore((args.store or settings.repo_dir / ".local").expanduser())
+    if args.trace_action == "capture":
+        if args.client == "pi":
+            destination = capture_pi(store, args.session, trace_id=args.trace_id)
+        else:
+            destination = capture_opencode(store, args.session, trace_id=args.trace_id)
+        manifest = store.show_trace(destination.name, include_events=False)
+        if args.json:
+            print_json(manifest)
+        else:
+            print(f"Trace capturado: {manifest['traceId']} -> {destination}")
+        return
+    if args.trace_action == "list":
+        manifests = store.list_traces()
+        if args.json:
+            print_json(manifests)
+            return
+        if not manifests:
+            print("No hay traces capturados")
+            return
+        print(f"{'TRACE':40} {'CLIENTE':12} {'EVENTOS':8} CREADO")
+        for manifest in manifests:
+            print(f"{manifest['traceId']:40} {manifest['source']['client']:12} {manifest['normalized']['eventCount']:>8} {manifest['createdAt']}")
+        return
+    payload = store.show_trace(args.trace_id, include_events=not args.manifest_only)
+    if args.json:
+        print_json(payload)
+        return
+    manifest = payload if args.manifest_only else payload["manifest"]
+    print(f"Trace: {manifest['traceId']}")
+    print(f"Fuente: {manifest['source']['client']} {manifest['source']['version']}")
+    print(f"Creado: {manifest['createdAt']}")
+    print(f"Eventos: {manifest['normalized']['eventCount']}")
+    for warning in manifest.get("warnings", []):
+        print(f"Advertencia: {warning}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="llm-lab", description="Plano de control de Local LLM Agent Lab")
     parser.add_argument("--repo-dir", type=pathlib.Path, default=pathlib.Path.cwd(), help=argparse.SUPPRESS)
@@ -456,6 +495,20 @@ def build_parser() -> argparse.ArgumentParser:
     storage.add_argument("storage_action", choices=["report", "archive", "restore"])
     storage.add_argument("profile", nargs="?")
     storage.add_argument("--json", action="store_true")
+    trace = sub.add_parser("trace", help="Importa e inspecciona trazas de agentes")
+    trace.add_argument("--store", type=pathlib.Path, help="Directorio local del store (predeterminado: .local)")
+    trace_sub = trace.add_subparsers(dest="trace_action", required=True)
+    trace_capture = trace_sub.add_parser("capture", help="Captura una sesión existente sin modificarla")
+    trace_capture.add_argument("client", choices=["pi", "opencode"])
+    trace_capture.add_argument("--session", required=True, help="ID de sesión; Pi también acepta una ruta JSONL exacta")
+    trace_capture.add_argument("--trace-id", help="ID local opcional; nunca sobrescribe uno existente")
+    trace_capture.add_argument("--json", action="store_true")
+    trace_list = trace_sub.add_parser("list", help="Lista manifests de traces locales")
+    trace_list.add_argument("--json", action="store_true")
+    trace_show = trace_sub.add_parser("show", help="Muestra un trace local")
+    trace_show.add_argument("trace_id")
+    trace_show.add_argument("--manifest-only", action="store_true", help="Omite los eventos normalizados")
+    trace_show.add_argument("--json", action="store_true")
     return parser
 
 
@@ -477,6 +530,7 @@ def main() -> int:
         "benchmark": command_benchmark,
         "bench": command_bench,
         "storage": command_storage,
+        "trace": command_trace,
     }
     try:
         settings = load_settings(args.repo_dir.resolve())

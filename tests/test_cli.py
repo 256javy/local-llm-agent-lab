@@ -57,6 +57,34 @@ class CliTests(unittest.TestCase):
         for option in ("--matrix", "--output", "--repetitions", "--no-warmup"):
             self.assertIn(option, result.stdout)
 
+    def test_trace_help_exposes_capture_list_and_show(self) -> None:
+        result = invoke("trace", "--help")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for action in ("capture", "list", "show"):
+            self.assertIn(action, result.stdout)
+
+    def test_trace_list_and_show_json(self) -> None:
+        import tempfile
+        from llm_lab.traces import TraceStore
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            raw = root / "raw.json"
+            raw.write_text("{}", encoding="utf-8")
+            store_path = root / ".local"
+            TraceStore(store_path).create_trace(
+                trace_id="trace-cli",
+                source={"client": "pi", "version": "0.84.4", "captureCommand": "fixture"},
+                raw_files={"raw.json": raw},
+                events=[],
+            )
+            listed = invoke("trace", "--store", str(store_path), "list", "--json")
+            self.assertEqual(listed.returncode, 0, listed.stderr)
+            self.assertEqual(json.loads(listed.stdout)[0]["traceId"], "trace-cli")
+            shown = invoke("trace", "--store", str(store_path), "show", "trace-cli", "--json")
+            self.assertEqual(shown.returncode, 0, shown.stderr)
+            self.assertEqual(json.loads(shown.stdout)["manifest"]["traceId"], "trace-cli")
+
     def test_storage_report_json(self) -> None:
         result = invoke("storage", "report", "--json")
         self.assertEqual(result.returncode, 0, result.stderr)
