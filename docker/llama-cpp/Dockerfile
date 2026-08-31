@@ -17,7 +17,7 @@ RUN git init /src/llama.cpp \
 RUN cmake -S /src/llama.cpp -B /src/llama.cpp/build -G Ninja \
        -DCMAKE_BUILD_TYPE=Release ${LLAMA_CPP_CMAKE_ARGS} \
        -DLLAMA_BUILD_UI=OFF -DLLAMA_USE_PREBUILT_UI=OFF \
-    && cmake --build /src/llama.cpp/build --target llama-server -j "$(nproc)"
+    && cmake --build /src/llama.cpp/build --target llama-server llama-bench -j "$(nproc)"
 
 FROM nvidia/cuda:13.0.3-runtime-ubuntu24.04
 
@@ -27,6 +27,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /src/llama.cpp/build/bin/llama-server /usr/local/bin/llama-server
+COPY --from=builder /src/llama.cpp/build/bin/llama-bench /usr/local/bin/llama-bench
 COPY docker/llama-cpp/entrypoint.sh /usr/local/bin/llm-lab-entrypoint
 RUN chmod +x /usr/local/bin/llm-lab-entrypoint
 

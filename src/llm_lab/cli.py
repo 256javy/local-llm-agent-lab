@@ -21,6 +21,7 @@ from .core import (
     compose_env,
     control_lock,
     docker_container_running,
+    docker_project_running,
     get_profile,
     gpu_info,
     http_json,
@@ -32,6 +33,7 @@ from .core import (
     wait_for_health,
     write_state,
 )
+from .native_bench import execute_native_bench
 
 
 def print_json(value: Any) -> None:
@@ -395,6 +397,20 @@ def command_benchmark(settings: Settings, args: argparse.Namespace) -> None:
     run(command, cwd=settings.repo_dir)
 
 
+def command_bench(settings: Settings, args: argparse.Namespace) -> None:
+    profile = get_profile(settings, args.profile)
+    with control_lock(settings):
+        if docker_project_running() or read_state(settings):
+            raise LabError("Detén el perfil activo antes de ejecutar llama-bench", 1)
+        matrix_path = settings.repo_dir / "benchmarks" / "native-matrix.json"
+        output_root = (args.output or settings.repo_dir / "benchmark-results" / "llama-bench").expanduser().resolve()
+        manifest = execute_native_bench(
+            settings, profile, matrix_path=matrix_path, output_root=output_root,
+            repetitions=args.repetitions, no_warmup=args.no_warmup,
+        )
+    print(f"Benchmark nativo guardado en {manifest}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="llm-lab", description="Plano de control de Local LLM Agent Lab")
     parser.add_argument("--repo-dir", type=pathlib.Path, default=pathlib.Path.cwd(), help=argparse.SUPPRESS)
@@ -430,6 +446,12 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark.add_argument("profile")
     benchmark.add_argument("--suite", choices=["smoke", "performance", "agent", "quality", "tools", "context", "soak"], default="smoke")
     benchmark.add_argument("--repetitions", type=int, default=None)
+    bench = sub.add_parser("bench", help="Ejecuta llama-bench con el servidor detenido")
+    bench.add_argument("profile")
+    bench.add_argument("--matrix", choices=["standard"], default="standard")
+    bench.add_argument("--output", type=pathlib.Path)
+    bench.add_argument("--repetitions", type=int, default=None)
+    bench.add_argument("--no-warmup", action="store_true")
     storage = sub.add_parser("storage", help="Inspecciona almacenamiento persistente")
     storage.add_argument("storage_action", choices=["report", "archive", "restore"])
     storage.add_argument("profile", nargs="?")
@@ -453,6 +475,7 @@ def main() -> int:
         "pull": command_pull,
         "client-config": command_client_config,
         "benchmark": command_benchmark,
+        "bench": command_bench,
         "storage": command_storage,
     }
     try:

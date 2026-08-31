@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "standard",
+  "repetitions": 5,
+  "tests": [
+    {"id": "pp512", "promptTokens": 512, "generationTokens": 0, "depth": 0},
+    {"id": "pp2048", "promptTokens": 2048, "generationTokens": 0, "depth": 0},
+    {"id": "pp8192", "promptTokens": 8192, "generationTokens": 0, "depth": 0},
+    {"id": "tg128", "promptTokens": 0, "generationTokens": 128, "depth": 0},
+    {"id": "tg512", "promptTokens": 0, "generationTokens": 512, "depth": 0},
+    {"id": "tg128-d8192", "promptTokens": 0, "generationTokens": 128, "depth": 8192},
+    {"id": "tg128-d16384", "promptTokens": 0, "generationTokens": 128, "depth": 16384}
+  ]
+}
