@@ -79,6 +79,12 @@ Los manifests, eventos, anotaciones, métricas y reviews tendrán
 y snapshots serán inmutables; una recaptura crea una nueva revisión. Solo se
 versionarán fixtures sintéticos mínimos.
 
+El store v1 ya implementado publica cada trace completo mediante rename desde
+un directorio temporal, rechaza IDs existentes, calcula SHA-256 para raw y
+eventos normalizados y aplica permisos `0700` a directorios, `0600` a metadata
+y eventos, y `0400` a la copia raw. Los adaptadores de clientes serán quienes
+construyan estos artefactos; esta capa no accede por sí sola a sesiones reales.
+
 ## Eventos normalizados
 
 Cada línea de `events.jsonl` incluirá al menos `schemaVersion`, `eventId`,

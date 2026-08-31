@@ -134,7 +134,7 @@ evidencia contradictoria.
 
 ### I-08 — Importación y normalización de trazas
 
-- [ ] **P0** Implementar store local versionado e inmutable bajo `.local/`,
+- [x] Implementar store local versionado e inmutable bajo `.local/`,
       manifests, hashes, escrituras atómicas y eventos JSONL con procedencia.
 - [ ] **P0** Implementar adaptador Pi para JSONL 0.84.x con mensajes, tools,
       cambios de modelo/thinking, compactions, ramas y tipos desconocidos.
