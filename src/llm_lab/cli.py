@@ -34,6 +34,7 @@ from .core import (
     write_state,
 )
 from .native_bench import execute_native_bench
+from .mtp_sweep import execute_mtp_sweep
 from .traces import TraceStore, capture_opencode, capture_pi
 
 
@@ -149,7 +150,7 @@ def stop_managed(settings: Settings, profile: dict[str, Any] | None = None) -> N
     clear_state(settings)
 
 
-def start_profile(settings: Settings, profile: dict[str, Any], *, build_only: bool = False) -> None:
+def start_profile(settings: Settings, profile: dict[str, Any], *, build_only: bool = False, build: bool = True) -> None:
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     env = compose_env(settings, profile)
     if build_only:
@@ -162,7 +163,13 @@ def start_profile(settings: Settings, profile: dict[str, Any], *, build_only: bo
     state_base = {"profile": profile["id"], "endpoint": settings.endpoint, "runtime": profile["runtime"]["adapter"], "startedAt": time.time(), "vramBaselineMiB": baseline}
     write_state(settings, {"state": "starting", **state_base})
     try:
-        run(compose_command(settings, "up", "-d", "--build", "server"), cwd=settings.repo_dir, env=env)
+        command = compose_command(settings, "up", "-d")
+        if build:
+            command.append("--build")
+        else:
+            command.append("--no-build")
+        command.append("server")
+        run(command, cwd=settings.repo_dir, env=env)
         wait_for_health(settings)
     except Exception:
         write_state(settings, {"state": "failed", **state_base})
@@ -395,6 +402,11 @@ def command_benchmark(settings: Settings, args: argparse.Namespace) -> None:
         if args.repetitions < 1:
             raise LabError("--repetitions debe ser mayor que cero", 2)
         command.extend(["--repetitions", str(args.repetitions)])
+    command.extend([
+        "--vram-sample-interval", str(args.vram_sample_interval),
+        "--degradation-latency-factor", str(args.degradation_latency_factor),
+        "--degradation-vram-growth-mib", str(args.degradation_vram_growth_mib),
+    ])
     run(command, cwd=settings.repo_dir)
 
 
@@ -410,6 +422,22 @@ def command_bench(settings: Settings, args: argparse.Namespace) -> None:
             repetitions=args.repetitions, no_warmup=args.no_warmup,
         )
     print(f"Benchmark nativo guardado en {manifest}")
+
+
+def command_mtp_sweep(settings: Settings, args: argparse.Namespace) -> None:
+    profile = get_profile(settings, args.profile)
+    suites = [suite.strip() for suite in args.suites.split(",") if suite.strip()]
+    destination = execute_mtp_sweep(
+        settings,
+        profile,
+        draft_n_max=args.draft_n_max,
+        suites=suites,
+        repetitions=args.repetitions,
+        output_root=args.output or settings.repo_dir / "benchmark-results" / "mtp-sweep",
+        start_profile=start_profile,
+        stop_managed=stop_managed,
+    )
+    print(f"Barrido MTP guardado en {destination}")
 
 
 def command_trace(settings: Settings, args: argparse.Namespace) -> None:
@@ -485,12 +513,21 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark.add_argument("profile")
     benchmark.add_argument("--suite", choices=["smoke", "performance", "agent", "quality", "tools", "context", "soak"], default="smoke")
     benchmark.add_argument("--repetitions", type=int, default=None)
+    benchmark.add_argument("--vram-sample-interval", type=float, default=5.0, help="Intervalo de muestreo de VRAM en segundos")
+    benchmark.add_argument("--degradation-latency-factor", type=float, default=1.5, help="Factor inicio/fin que marca degradación en soak")
+    benchmark.add_argument("--degradation-vram-growth-mib", type=int, default=512, help="Crecimiento de VRAM que marca degradación en soak")
     bench = sub.add_parser("bench", help="Ejecuta llama-bench con el servidor detenido")
     bench.add_argument("profile")
     bench.add_argument("--matrix", choices=["standard"], default="standard")
     bench.add_argument("--output", type=pathlib.Path)
     bench.add_argument("--repetitions", type=int, default=None)
     bench.add_argument("--no-warmup", action="store_true")
+    mtp_sweep = sub.add_parser("mtp-sweep", help="Compara MTP activo e inactivo con distintos límites de draft")
+    mtp_sweep.add_argument("profile")
+    mtp_sweep.add_argument("--draft-n-max", type=int, nargs="+", required=True, help="Valores positivos para --spec-draft-n-max")
+    mtp_sweep.add_argument("--suites", default="quality,tools", help="Suites HTTP separadas por coma")
+    mtp_sweep.add_argument("--repetitions", type=int, default=3)
+    mtp_sweep.add_argument("--output", type=pathlib.Path)
     storage = sub.add_parser("storage", help="Inspecciona almacenamiento persistente")
     storage.add_argument("storage_action", choices=["report", "archive", "restore"])
     storage.add_argument("profile", nargs="?")
@@ -529,6 +566,7 @@ def main() -> int:
         "client-config": command_client_config,
         "benchmark": command_benchmark,
         "bench": command_bench,
+        "mtp-sweep": command_mtp_sweep,
         "storage": command_storage,
         "trace": command_trace,
     }

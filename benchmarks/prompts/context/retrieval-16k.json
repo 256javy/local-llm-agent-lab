@@ -1,0 +1,9 @@
+{
+  "id": "context-retrieval-16k",
+  "messages": [{"role": "user", "content": "Lee el contexto. La clave de auditoría es MANDUARÁ-16042. {{CONTEXT_PADDING}} ¿Cuál es la clave de auditoría? Responde solo con la clave."}],
+  "contextPadding": {"token": "registro", "repetitions": 15000},
+  "max_tokens": 32,
+  "temperature": 0,
+  "chat_template_kwargs": {"enable_thinking": false},
+  "assert": {"contentEquals": "MANDUARÁ-16042"}
+}
