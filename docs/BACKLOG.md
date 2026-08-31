@@ -77,11 +77,11 @@ evidencia contradictoria.
 
 ### I-03 — Matriz exigente de modelos actuales
 
-- [ ] **P1** Ejecutar `quality`, `tools`, `context` y `soak` sobre Qwen 3.6 y Qwen 3.8;
+- [x] Ejecutar `quality`, `tools`, `context` y `soak` sobre Qwen 3.6 y Qwen 3.8;
   Gemma 12B ya tiene el primer baseline de estas suites.
-- [ ] **P1** Añadir contextos 16K y 32K, seguimiento de VRAM por intervalo y detección
+- [x] Añadir contextos 16K y 32K, seguimiento de VRAM por intervalo y detección
   de degradación durante soak.
-- [ ] **P1** Barrer `spec-draft-n-max` con MTP activado/desactivado y elegir valores por
+- [x] Barrer `spec-draft-n-max` con MTP activado/desactivado y elegir valores por
   perfil usando calidad, latencia y aceptación, no solo tokens/s.
 - Empezar por `docs/VALIDATION.md`, `docs/benchmarking.md` y los JSON ignorados
   bajo `benchmark-results/`.
@@ -239,8 +239,7 @@ evidencia contradictoria.
 - [x] Argumentos declarativos para Gemma 4 MTP.
 - [x] Runtime fijado para Qwen MTP/NextN.
 - [x] Verificar revisiones y artefactos vigentes mediante APIs upstream.
-- [~] **P1** Baseline MTP validado; falta barrido comparativo de
-      `spec-draft-n-max`.
+- [x] Baseline MTP y barrido comparativo de `spec-draft-n-max` validados.
 
 ## Fase 4 — Benchmarks
 

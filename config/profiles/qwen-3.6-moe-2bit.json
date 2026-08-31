@@ -17,7 +17,7 @@
   "server": {
     "contextSize": 32768,
     "parallel": 1,
-    "arguments": ["--n-gpu-layers", "99", "--flash-attn", "on", "--cache-type-k", "q4_0", "--cache-type-v", "q4_0", "--mmap", "--jinja", "--spec-type", "draft-mtp", "--spec-draft-n-max", "3"]
+    "arguments": ["--n-gpu-layers", "99", "--flash-attn", "on", "--cache-type-k", "q4_0", "--cache-type-v", "q4_0", "--mmap", "--jinja", "--spec-type", "draft-mtp", "--spec-draft-n-max", "4"]
   },
   "requirements": {"minimumVramGiB": 15, "recommendedVramGiB": 16},
   "capabilities": {"chatCompletions": true, "responses": "verify", "toolCalling": true, "reasoning": true, "vision": false, "audio": false},
