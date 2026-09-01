@@ -125,9 +125,23 @@ eventos normalizados y no accede a la red:
 ./bin/llm-lab trace show <trace-id> --json
 ```
 
+Para capturar el estado exacto del checkout antes y después de una tarea:
+
+```bash
+./bin/llm-lab trace begin --client pi --repo .
+# ejecutar la tarea del agente
+./bin/llm-lab trace finish <trace-id>
+```
+
+`begin` registra Git y contexto sin mutar el checkout. El contenido de archivos
+no rastreados no se copia salvo con `--include-untracked`; ese modo aplica
+exclusiones, límites y redacción heurística, y genera un reporte sin valores
+detectados.
+
 Los traces pueden contener código, prompts, resultados de herramientas y
-secretos. Permanecen ignorados por Git y todavía no deben compartirse: la
-redacción y los bundles exportables corresponden a una iniciativa posterior.
+secretos. Permanecen ignorados por Git y todavía no deben compartirse: existe
+la base de redacción, pero los bundles exportables corresponden a una iniciativa
+posterior.
 Consulta [Análisis de trazas](docs/trace-analysis.md) para conocer formatos,
 procedencia y limitaciones.
 

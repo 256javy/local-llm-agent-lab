@@ -113,6 +113,33 @@ admiten `--json`; `--store` permite inspeccionar otro store explícito. Los test
 usan fixtures totalmente sintéticos de Pi 0.84/formato v3 y OpenCode 1.18, sin
 acceder a sesiones reales.
 
+## Captura exacta disponible
+
+La captura en vivo registra el estado inicial y final sin ejecutar operaciones
+Git que muten el checkout:
+
+```bash
+./bin/llm-lab trace begin --client pi --repo . [--trace-id <id>]
+./bin/llm-lab trace finish <id>
+```
+
+Solo puede existir una captura abierta por store. Su estado temporal usa
+permisos `0600`; `finish` publica atómicamente el trace inmutable y elimina ese
+estado. Los snapshots incluyen raíz, HEAD, branch o detached HEAD, remotes sin
+credenciales, submódulos, porcelain v2, patches staged/unstaged e inventario
+untracked. Un directorio no Git queda explícitamente `unavailable`.
+
+Por defecto solo se conserva el inventario untracked. `--include-untracked` es
+opt-in y copia únicamente texto bajo el repositorio después de rechazar symlinks,
+aplicar exclusiones y límites (`--max-file-bytes`, `--max-total-bytes`) y redactar
+secretos comunes. Cada fase guarda un reporte de coincidencias y omisiones sin
+los valores detectados. La redacción es heurística, no DLP ni autorización para
+compartir el trace.
+
+`--confirmed-context <json>` acepta observaciones explícitas con `value` y
+`evidence` para modelo, perfil, runtime, prompts o tools. Archivos `AGENTS.md` y
+configuraciones solo quedan `discovered`; lo no demostrado queda `unknown`.
+
 ## Eventos normalizados
 
 Cada línea de `events.jsonl` incluirá al menos `schemaVersion`, `eventId`,
@@ -131,11 +158,11 @@ como `system_event` con referencia al raw y advertencia de compatibilidad.
 
 ## Estado del repositorio
 
-La captura exacta (`trace begin`/`trace finish`) registrará, sin modificar el
+La captura exacta (`trace begin`/`trace finish`) registra, sin modificar el
 checkout: raíz, `HEAD`, branch o detached HEAD, remotes sin credenciales,
 submódulos, `git status --porcelain=v2`, patch staged, patch unstaged y una
 lista de archivos no rastreados. Si el usuario opta por preservar sus contenidos,
-se empaquetarán fuera de Git con paths relativos seguros, límites configurables,
+se preservan fuera de Git con paths relativos seguros, límites configurables,
 hashes y exclusión predeterminada de `.git`, `.env`, credenciales, caches,
 modelos y el propio almacén `.local`.
 
@@ -147,8 +174,8 @@ compresión para no sumar una dependencia que Python estándar no garantiza.
 
 ## Contexto efectivo
 
-Se separará `discovered` de `confirmed_loaded`. La existencia de `AGENTS.md`,
-configuración o skills no demuestra que el harness los aplicó. Se capturarán,
+Se separa `discovered` de `confirmed_loaded`. La existencia de `AGENTS.md`,
+configuración o skills no demuestra que el harness los aplicó. Se capturan,
 cuando la fuente lo permita, modelo/perfil, contexto, argumentos del runtime,
 system/developer prompt observado, reglas raíz y anidadas, configuración Pi u
 OpenCode relevante y definiciones/metadatos de herramientas. Lo no observable

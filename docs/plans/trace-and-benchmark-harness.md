@@ -116,13 +116,19 @@ manifest validado sin acceder a sesiones reales en tests.
 Estado: completado. El store, los adaptadores, fixtures sintéticos y comandos
 `trace capture/list/show` están implementados. Pi acepta ID o ruta exacta;
 OpenCode valida el ID con `session list --format json` antes de ejecutar
-`export`. La captura exacta del estado Git y la redacción siguen en S3.
+`export`.
 
 ### S3. Captura exacta y privacidad
 
 `begin`/`finish`, snapshots Git read-only, contexto efectivo, permisos locales,
 redacción/reporte y advertencias de export. Cierre: clean/dirty/staged/untracked,
 detached HEAD, repositorio no Git, symlinks y límites de tamaño probados.
+
+Estado: completado. `trace begin/finish` publica snapshots inicial/final y
+contexto con estados `discovered`, `confirmed_loaded` o `unknown`. El contenido
+untracked es opt-in, limitado y redactado; symlinks y rutas sensibles se omiten.
+La redacción base no convierte un trace en un bundle compartible: el bundle y
+su confirmación explícita pertenecen a S5.
 
 ### S4. Outcome y métricas
 
