@@ -20,7 +20,7 @@
     "sha256": null
   },
   "server": {
-    "contextSize": 65536,
+    "contextSize": 98304,
     "parallel": 1,
     "arguments": [
       "-ngl",
