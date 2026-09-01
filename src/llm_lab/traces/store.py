@@ -46,6 +46,8 @@ class TraceStore:
         events: Iterable[dict[str, Any]],
         trace_id: str | None = None,
         warnings: Iterable[str] = (),
+        artifacts: Mapping[str, bytes | str] | None = None,
+        manifest_fields: Mapping[str, Any] | None = None,
     ) -> pathlib.Path:
         trace_id = trace_id or f"trace-{uuid.uuid4()}"
         self._validate_trace_id(trace_id)
@@ -74,6 +76,7 @@ class TraceStore:
             raw_dir.mkdir(mode=0o700)
             normalized_dir.mkdir(mode=0o700)
             raw_entries = self._copy_raw(raw_files, raw_dir)
+            artifact_entries = self._write_artifacts(artifacts or {}, staging)
             events_path = normalized_dir / "events.jsonl"
             with events_path.open("x", encoding="utf-8") as handle:
                 for event in normalized_events:
@@ -95,6 +98,15 @@ class TraceStore:
                 },
                 "warnings": list(warnings),
             }
+            if artifact_entries:
+                manifest["artifacts"] = artifact_entries
+            if manifest_fields:
+                reserved = set(manifest) & set(manifest_fields)
+                if reserved:
+                    raise LabError(
+                        f"Campos de manifest reservados: {', '.join(sorted(reserved))}", 2
+                    )
+                manifest.update(manifest_fields)
             _write_json(staging / "manifest.json", manifest)
             os.replace(staging, destination)
             return destination
@@ -138,6 +150,15 @@ class TraceStore:
             raw_path = trace_path / entry["path"]
             if raw_path.is_symlink() or not raw_path.is_file() or sha256_file(raw_path) != entry["sha256"]:
                 raise LabError(f"La evidencia raw no coincide con el manifest: {entry['path']}", 2)
+        for entry in manifest.get("artifacts", []):
+            artifact_path = trace_path.joinpath(*pathlib.PurePosixPath(entry["path"]).parts)
+            if (
+                artifact_path.is_symlink()
+                or not artifact_path.is_file()
+                or artifact_path.stat().st_size != entry["bytes"]
+                or sha256_file(artifact_path) != entry["sha256"]
+            ):
+                raise LabError(f"El artefacto no coincide con el manifest: {entry['path']}", 2)
         return {"manifest": manifest, "events": events}
 
     def _read_manifest(self, trace_id: str) -> dict[str, Any]:
@@ -155,6 +176,7 @@ class TraceStore:
         source = manifest.get("source")
         normalized = manifest.get("normalized")
         raw = manifest.get("raw")
+        artifacts = manifest.get("artifacts", [])
         if (
             manifest.get("schemaVersion") != SCHEMA_VERSION
             or not isinstance(source, dict)
@@ -173,9 +195,53 @@ class TraceStore:
                 and isinstance(item.get("sha256"), str)
                 for item in raw
             )
+            or not isinstance(artifacts, list)
+            or not all(
+                isinstance(item, dict)
+                and isinstance(item.get("path"), str)
+                and self._safe_artifact_path(item["path"])
+                and isinstance(item.get("bytes"), int)
+                and isinstance(item.get("sha256"), str)
+                for item in artifacts
+            )
         ):
             raise LabError(f"Manifest de trace inválido: {trace_id}", 2)
         return manifest
+
+    @staticmethod
+    def _safe_artifact_path(value: str) -> bool:
+        path = pathlib.PurePosixPath(value)
+        return (
+            bool(value)
+            and not path.is_absolute()
+            and len(path.parts) >= 2
+            and all(part not in {"", ".", ".."} for part in path.parts)
+            and path.parts[0] not in {"raw", "normalized"}
+        )
+
+    @classmethod
+    def _write_artifacts(
+        cls, artifacts: Mapping[str, bytes | str], staging: pathlib.Path
+    ) -> list[dict[str, Any]]:
+        entries: list[dict[str, Any]] = []
+        for relative, content in sorted(artifacts.items()):
+            if not cls._safe_artifact_path(relative):
+                raise LabError(f"Ruta de artefacto inválida: {relative}", 2)
+            destination = staging.joinpath(*pathlib.PurePosixPath(relative).parts)
+            destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            destination.parent.chmod(0o700)
+            data = content.encode("utf-8") if isinstance(content, str) else content
+            with destination.open("xb") as handle:
+                handle.write(data)
+                handle.flush()
+                os.fsync(handle.fileno())
+            destination.chmod(0o600)
+            entries.append({
+                "path": relative,
+                "bytes": len(data),
+                "sha256": sha256_file(destination),
+            })
+        return entries
 
     @staticmethod
     def _validate_trace_id(trace_id: str) -> None:

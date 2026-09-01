@@ -49,6 +49,40 @@ class TraceStoreTests(unittest.TestCase):
             self.assertEqual((trace / "raw/session.jsonl").stat().st_mode & 0o777, 0o400)
             self.assertEqual((trace / "manifest.json").stat().st_mode & 0o777, 0o600)
 
+    def test_create_trace_publishes_hashed_artifacts_atomically(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            raw = root / "source.json"
+            raw.write_text("{}", encoding="utf-8")
+            store = TraceStore(root / ".local")
+
+            trace = store.create_trace(
+                trace_id="trace-artifacts",
+                source={"client": "pi", "version": "unknown", "captureCommand": "trace begin"},
+                raw_files={"capture.json": raw},
+                events=[],
+                artifacts={"repository/initial/snapshot.json": "{\"status\":\"captured\"}\n"},
+                manifest_fields={"captureMode": "exact"},
+            )
+
+            payload = store.show_trace("trace-artifacts")
+            self.assertEqual(payload["manifest"]["captureMode"], "exact")
+            self.assertEqual(payload["manifest"]["artifacts"][0]["path"], "repository/initial/snapshot.json")
+            self.assertEqual((trace / "repository/initial/snapshot.json").stat().st_mode & 0o777, 0o600)
+
+    def test_rejects_unsafe_artifact_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            raw = root / "source.json"
+            raw.write_text("{}", encoding="utf-8")
+            with self.assertRaisesRegex(LabError, "Ruta de artefacto"):
+                TraceStore(root / ".local").create_trace(
+                    source={"client": "pi", "version": "unknown", "captureCommand": "fixture"},
+                    raw_files={"source.json": raw},
+                    events=[],
+                    artifacts={"../escape.json": "{}"},
+                )
+
     def test_existing_trace_is_never_overwritten(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = pathlib.Path(temporary)

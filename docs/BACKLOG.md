@@ -152,15 +152,18 @@ evidencia contradictoria.
 
 ### I-09 — Captura exacta, contexto y privacidad
 
-- [ ] **P1** Implementar `trace begin`/`finish` y snapshots Git read-only para
+- [x] Implementar `trace begin`/`finish` y snapshots Git read-only para
       clean/dirty, staged/unstaged, untracked, detached HEAD y no-Git.
-- [ ] **P1** Registrar contexto `discovered`, `confirmed_loaded` o `unknown`,
+- [x] Registrar contexto `discovered`, `confirmed_loaded` o `unknown`,
       perfil/runtime y configuración relevante sin afirmar carga no observable.
-- [ ] **P1** Aplicar permisos restrictivos, límites, exclusiones, detección de
+- [x] Aplicar permisos restrictivos, límites, exclusiones, detección de
       secretos y reporte de redacción antes de exportar; contenido untracked
       queda opt-in.
 - Aceptación: la captura no muta el checkout, declara información no recuperable
   y un bundle sintético no filtra los secretos de prueba.
+- Aceptación cumplida: snapshots clean/dirty/staged/unstaged/untracked,
+  detached/no-Git y submódulos están cubiertos; el contenido untracked es opt-in
+  y los fixtures de redacción no filtran sus secretos sintéticos.
 
 ### I-10 — Outcome, anotaciones y métricas
 

@@ -35,7 +35,7 @@ from .core import (
 )
 from .native_bench import execute_native_bench
 from .mtp_sweep import execute_mtp_sweep
-from .traces import TraceStore, capture_opencode, capture_pi
+from .traces import TraceStore, begin_exact_capture, capture_opencode, capture_pi, finish_exact_capture
 
 
 def print_json(value: Any) -> None:
@@ -453,6 +453,37 @@ def command_trace(settings: Settings, args: argparse.Namespace) -> None:
         else:
             print(f"Trace capturado: {manifest['traceId']} -> {destination}")
         return
+    if args.trace_action == "begin":
+        confirmations = None
+        if args.confirmed_context:
+            try:
+                confirmations = json.loads(args.confirmed_context.read_text(encoding="utf-8"))
+            except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+                raise LabError(f"No se pudo leer --confirmed-context: {exc}", 2) from exc
+        result = begin_exact_capture(
+            store,
+            client=args.client,
+            repository=args.repo.resolve(),
+            trace_id=args.trace_id,
+            confirmations=confirmations,
+            include_untracked=args.include_untracked,
+            max_file_bytes=args.max_file_bytes,
+            max_total_bytes=args.max_total_bytes,
+        )
+        if args.json:
+            print_json(result)
+        else:
+            print(f"Captura iniciada: {result['traceId']}")
+            print(f"Finaliza con: llm-lab trace finish {result['traceId']}")
+        return
+    if args.trace_action == "finish":
+        destination = finish_exact_capture(store, args.trace_id)
+        manifest = store.show_trace(destination.name, include_events=False)
+        if args.json:
+            print_json(manifest)
+        else:
+            print(f"Captura finalizada: {manifest['traceId']} -> {destination}")
+        return
     if args.trace_action == "list":
         manifests = store.list_traces()
         if args.json:
@@ -540,6 +571,18 @@ def build_parser() -> argparse.ArgumentParser:
     trace_capture.add_argument("--session", required=True, help="ID de sesión; Pi también acepta una ruta JSONL exacta")
     trace_capture.add_argument("--trace-id", help="ID local opcional; nunca sobrescribe uno existente")
     trace_capture.add_argument("--json", action="store_true")
+    trace_begin = trace_sub.add_parser("begin", help="Inicia una captura exacta del checkout sin modificarlo")
+    trace_begin.add_argument("--client", choices=["pi", "opencode"], required=True)
+    trace_begin.add_argument("--repo", type=pathlib.Path, default=pathlib.Path.cwd())
+    trace_begin.add_argument("--trace-id", help="ID local opcional; nunca sobrescribe uno existente")
+    trace_begin.add_argument("--confirmed-context", type=pathlib.Path, help="JSON con contexto cargado y evidencia explícita")
+    trace_begin.add_argument("--include-untracked", action="store_true", help="Preserva contenido untracked redactado; es opt-in")
+    trace_begin.add_argument("--max-file-bytes", type=int, default=1_048_576)
+    trace_begin.add_argument("--max-total-bytes", type=int, default=10_485_760)
+    trace_begin.add_argument("--json", action="store_true")
+    trace_finish = trace_sub.add_parser("finish", help="Finaliza una captura exacta abierta")
+    trace_finish.add_argument("trace_id")
+    trace_finish.add_argument("--json", action="store_true")
     trace_list = trace_sub.add_parser("list", help="Lista manifests de traces locales")
     trace_list.add_argument("--json", action="store_true")
     trace_show = trace_sub.add_parser("show", help="Muestra un trace local")
