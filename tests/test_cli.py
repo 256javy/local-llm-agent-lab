@@ -40,6 +40,30 @@ class CliTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("127.0.0.1:18080", result.stdout)
 
+    def test_client_config_output_and_force_backups(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temporary:
+            output_file = pathlib.Path(temporary) / "subdir" / "models.json"
+            first = invoke("client-config", "pi", "--output", str(output_file))
+            self.assertEqual(first.returncode, 0, first.stderr)
+            self.assertTrue(output_file.exists())
+
+            without_force = invoke("client-config", "pi", "--output", str(output_file))
+            self.assertEqual(without_force.returncode, 1)
+            self.assertIn("usa --force para reemplazarlo", without_force.stderr)
+
+            second = invoke("client-config", "pi", "--output", str(output_file), "--force")
+            self.assertEqual(second.returncode, 0, second.stderr)
+            self.assertIn("Backup:", second.stdout)
+
+            third = invoke("client-config", "pi", "--output", str(output_file), "--force")
+            self.assertEqual(third.returncode, 0, third.stderr)
+            self.assertIn("Backup:", third.stdout)
+
+            backups = list(output_file.parent.glob("models.json.bak-*"))
+            self.assertEqual(len(backups), 2)
+
     def test_unknown_profile_has_exit_code_two(self) -> None:
         result = invoke("start", "missing-profile")
         self.assertEqual(result.returncode, 2)

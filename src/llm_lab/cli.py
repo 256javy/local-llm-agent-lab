@@ -300,9 +300,12 @@ def command_client_config(settings: Settings, args: argparse.Namespace) -> None:
         raise LabError(f"El archivo ya existe: {destination}; usa --force para reemplazarlo", 1)
     destination.parent.mkdir(parents=True, exist_ok=True)
     if destination.exists():
-        backup = destination.with_name(f"{destination.name}.bak-{datetime.date.today().isoformat()}")
-        if backup.exists():
-            raise LabError(f"El backup del día ya existe: {backup}", 1)
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H%M%S")
+        backup = destination.with_name(f"{destination.name}.bak-{timestamp}")
+        counter = 1
+        while backup.exists():
+            backup = destination.with_name(f"{destination.name}.bak-{timestamp}-{counter}")
+            counter += 1
         shutil.copy2(destination, backup)
         print(f"Backup: {backup}")
     destination.write_text(rendered, encoding="utf-8")
