@@ -77,7 +77,7 @@ Para escribir en una ruta nueva de forma explícita:
 ```
 
 La CLI se niega a reemplazar archivos salvo que se use `--force`; en ese caso
-crea antes un backup `archivo.bak-YYYY-MM-DD`.
+crea antes un backup `archivo.bak-YYYY-MM-DD-HHMMSS`.
 
 Pi y OpenCode deben ejecutarse desde el directorio del proyecto sobre el que
 trabajarán. La inferencia permanece aislada en Docker.
