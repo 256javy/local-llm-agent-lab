@@ -36,8 +36,12 @@ Suites disponibles:
 - `performance`: generación corta de código con timings de prompt/decode.
 - `quality`: aritmética, seguimiento estricto de instrucciones y español.
 - `tools`: selección entre herramientas y decisión correcta de no invocarlas.
-- `context`: recuperación determinista dentro de aproximadamente 8K tokens.
-- `soak`: smoke y tool calling repetidos 50 veces por defecto.
+- `context`: recuperación determinista en aproximadamente 8K, 16K y 32K
+  tokens. Los fixtures guardan la clave antes del relleno para comprobar que la
+  respuesta recorre todo el contexto; la cantidad de tokens exacta depende del
+  tokenizer del modelo.
+- `soak`: smoke y tool calling repetidos 50 veces por defecto, con muestreo de
+  VRAM cada 5 segundos y detección de degradación.
 
 La cantidad de repeticiones puede ajustarse:
 
@@ -49,6 +53,30 @@ La cantidad de repeticiones puede ajustarse:
 Cada registro incluye mediana y p95, snapshot de GPU, ID y fecha de la imagen,
 `CUDA_VERSION`, fingerprint del servidor, timings y aceptación MTP. Estas suites
 son gates operativos del proyecto; no reemplazan benchmarks académicos.
+
+En `soak`, el JSON incluye `vramSamples` con marcas temporales, además de
+`degradation`. El harness falla la suite si falla una respuesta, si la mediana
+del último quinto de un fixture alcanza 1,5 veces la del primer quinto (desde
+10 repeticiones), o si la VRAM crece 512 MiB desde la primera muestra. Los
+tres límites son explícitos y ajustables para un diagnóstico:
+`--vram-sample-interval`,
+`--degradation-latency-factor` y `--degradation-vram-growth-mib`. La ausencia
+de `nvidia-smi` se registra como VRAM no disponible, sin convertirla en un
+resultado de degradación.
+
+El barrido MTP usa la imagen y el GGUF ya preparados, reinicia una sola variante
+por vez y deja el servidor detenido al terminar:
+
+```bash
+./bin/llm-lab mtp-sweep <perfil> --draft-n-max 1 2 3 4 \
+  --suites quality,performance --repetitions 3
+```
+
+El baseline omite por completo speculative decoding. Las demás variantes
+registran calidad, p50/p95, tokens draft propuestos y aceptados. La recomendación
+solo considera casos funcionalmente correctos, exige aceptación MTP observada y
+elige primero la menor latencia mediana; los resultados quedan ignorados por Git
+bajo `benchmark-results/mtp-sweep/`.
 
 ## Comparaciones estándar
 

@@ -120,6 +120,35 @@ CUDA 13.0.3 y `b1-57291f2`:
 
 `soak` ejecutó dos fixtures, por lo que completó 100 solicitudes sin fallos.
 El p95 de contexto incluye la primera evaluación en frío y evidencia por qué se
-registran percentiles además de la mediana. Falta ejecutar esta matriz sobre los
-otros perfiles y sumar los benchmarks externos versionados indicados en el
-backlog.
+registran percentiles además de la mediana. La matriz comparable de los otros
+perfiles se completó en I-03; los benchmarks externos versionados siguen en
+I-02.
+
+## Matriz exigente I-03
+
+El 2026-08-31 se repitieron `quality`, `tools`, `context` y `soak` para los tres
+perfiles descargados sobre CUDA 13.0.3 y `b1-57291f2`. `context` incluyó
+fixtures aproximados de 8K, 16K y 32K; `soak` completó 100 solicitudes por
+perfil con muestreo de VRAM cada cinco segundos. Todas las aserciones pasaron y
+ningún perfil activó los gates de degradación de latencia o VRAM.
+
+| Perfil | VRAM pico | Máximo p95 quality | Máximo p95 tools | Máximo p95 context | Máximo p95 soak |
+|---|---:|---:|---:|---:|---:|
+| Gemma 4 12B QAT + MTP | 10.105 MiB | 0,180 s | 1,029 s | 17,256 s | 0,590 s |
+| Qwen 3.6 35B-A3B Q2 + MTP | 15.204 MiB | 0,351 s | 0,899 s | 11,842 s | 0,633 s |
+| Qwen 3.8 27B IQ3_XXS + MTP | 14.136 MiB | 0,511 s | 2,654 s | 39,295 s | 0,988 s |
+
+El barrido MTP comparó baseline desactivado y `spec-draft-n-max` 1, 2, 3 y 4,
+con tres repeticiones de `quality` y `performance`. La selección exige que todas
+las aserciones pasen, que exista aceptación draft observada y prioriza la menor
+latencia mediana; los JSON completos quedan ignorados por Git.
+
+| Perfil | Valor elegido | Mediana elegida | Baseline sin MTP | Aceptación draft |
+|---|---:|---:|---:|---:|
+| Gemma 4 12B QAT + MTP | 2 | 0,121 s | 0,212 s | 84/84 (100,0 %) |
+| Qwen 3.6 35B-A3B Q2 + MTP | 4 | 0,140 s | 0,185 s | 105/132 (79,5 %) |
+| Qwen 3.8 27B IQ3_XXS + MTP | 3 | 0,320 s | 0,432 s | 81/90 (90,0 %) |
+
+Gemma y Qwen 3.8 ya declaraban los valores seleccionados. Qwen 3.6 se actualizó
+de 3 a 4. Al finalizar todas las corridas, el servidor quedó detenido y la VRAM
+volvió a 2.027 MiB; ese baseline incluye aplicaciones gráficas del host.
