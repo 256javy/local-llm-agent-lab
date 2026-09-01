@@ -99,7 +99,7 @@ def _sanitize_remote_url(value: str) -> str:
         return urlunsplit((parsed.scheme, host, parsed.path, "", ""))
     if "@" in value and not value.startswith("@"):
         # Sintaxis SCP de Git: usuario@host:organizacion/repositorio.git.
-        return value.rsplit("@", 1)[-1]
+        return value.split("@", 1)[-1]
     return value.split("#", 1)[0].split("?", 1)[0]
 
 

@@ -60,8 +60,32 @@ class CliTests(unittest.TestCase):
     def test_trace_help_exposes_capture_list_and_show(self) -> None:
         result = invoke("trace", "--help")
         self.assertEqual(result.returncode, 0, result.stderr)
-        for action in ("capture", "list", "show"):
+        for action in ("capture", "begin", "finish", "list", "show"):
             self.assertIn(action, result.stdout)
+
+    def test_trace_begin_and_finish_json(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            repo = root / "repo"
+            repo.mkdir()
+            subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+            subprocess.run(["git", "-C", str(repo), "config", "user.name", "Fixture"], check=True)
+            subprocess.run(["git", "-C", str(repo), "config", "user.email", "fixture@example.test"], check=True)
+            (repo / "fixture.txt").write_text("fixture\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(repo), "add", "fixture.txt"], check=True)
+            subprocess.run(["git", "-C", str(repo), "commit", "-qm", "fixture"], check=True)
+            store = root / "store"
+            begun = invoke(
+                "trace", "--store", str(store), "begin", "--client", "pi",
+                "--repo", str(repo), "--trace-id", "trace-cli-exact", "--json",
+            )
+            self.assertEqual(begun.returncode, 0, begun.stderr)
+            self.assertEqual(json.loads(begun.stdout)["traceId"], "trace-cli-exact")
+            finished = invoke("trace", "--store", str(store), "finish", "trace-cli-exact", "--json")
+            self.assertEqual(finished.returncode, 0, finished.stderr)
+            self.assertEqual(json.loads(finished.stdout)["captureMode"], "exact")
 
     def test_trace_list_and_show_json(self) -> None:
         import tempfile

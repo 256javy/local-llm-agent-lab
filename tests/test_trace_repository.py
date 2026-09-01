@@ -87,6 +87,32 @@ class RepositorySnapshotTests(unittest.TestCase):
             self.assertEqual(snapshot["ref"], {"state": "captured", "kind": "detached", "name": None})
             self.assertRegex(snapshot["head"]["value"], r"^[0-9a-f]{40}$")
 
+    def test_submodule_status_is_recorded_read_only(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.repository(temporary)
+            source = pathlib.Path(temporary) / "submodule-source"
+            source.mkdir()
+            self.git(source, "init")
+            self.git(source, "config", "user.email", "tests@example.invalid")
+            self.git(source, "config", "user.name", "Trace tests")
+            (source / "module.txt").write_text("module\n", encoding="utf-8")
+            self.git(source, "add", "module.txt")
+            self.git(source, "commit", "-m", "module")
+            subprocess.run(
+                ["git", "-C", str(root), "-c", "protocol.file.allow=always", "submodule", "add", str(source), "vendor/module"],
+                check=True,
+                text=True,
+                capture_output=True,
+            )
+            self.git(root, "add", ".gitmodules", "vendor/module")
+            self.git(root, "commit", "-m", "add module")
+
+            snapshot = capture_repository_snapshot(root)
+
+            self.assertEqual(snapshot["submodules"]["state"], "captured")
+            self.assertEqual(snapshot["submodules"]["items"][0]["path"], "vendor/module")
+            self.assertEqual(snapshot["submodules"]["items"][0]["checkoutState"], "clean")
+
     def test_non_git_directory_is_explicitly_unavailable(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             snapshot = capture_repository_snapshot(temporary)
