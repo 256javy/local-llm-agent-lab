@@ -6,8 +6,10 @@ compatibilidad hasta completar build, VRAM, contexto, tool calling y benchmarks.
 
 ## Prioridad
 
-1. **Qwen3-Coder 30B-A3B Instruct** — perfil `coding-agent`. Probar GGUF Q3/IQ3
-   con 16K y 32K; una Q4 puede dejar poco margen en 16 GB. Fuente oficial:
+1. **Qwen3-Coder 30B-A3B Instruct** — incorporado como perfil experimental
+   `qwen3-coder-30b-a3b-iq3xxs`, con GGUF UD-IQ3_XXS y contexto inicial de 16K.
+   La cuantización pesa 12.848.766.112 bytes; queda pendiente medir el margen
+   real de VRAM antes de probar 32K. Fuente oficial:
    <https://huggingface.co/Qwen/Qwen3-Coder-30B-A3B-Instruct>.
 2. **Ministral 3 14B Instruct** — perfil `general-balanced`, multilingüe y con
    margen para contexto. Empezar solo texto aunque la familia soporte visión.
@@ -31,5 +33,6 @@ y solo avanza tras pasar `smoke`, `quality`, `tools`, `context`, `performance` y
 una ejecución `soak` sin degradación ni fuga de VRAM.
 
 Gemma 3 12B no es prioridad porque solapa el rol ya cubierto por Gemma 4 12B.
-Mistral Small 24B y Qwen Coder Q4 pueden caber con ajustes agresivos, pero dejan
+Mistral Small 24B y Qwen3-Coder Q4 requieren offload parcial en 16 GB, porque el
+GGUF Q4_K_M por sí solo supera la VRAM disponible; dejan
 menos margen operativo que los candidatos anteriores.

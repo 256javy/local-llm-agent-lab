@@ -90,9 +90,12 @@ evidencia contradictoria.
 
 ### I-04 — Primer perfil nuevo orientado a coding
 
-- [ ] **P2** Evaluar Qwen3-Coder 30B-A3B Instruct como primera incorporación.
-- [ ] **P2** Seleccionar GGUF Q3/IQ3, fijar repositorio, revisión, archivo, checksum y
-  licencia; comenzar con 16K y luego 32K si queda margen de VRAM.
+- [~] **P2** Evaluar Qwen3-Coder 30B-A3B Instruct como primera incorporación. El
+  perfil experimental declarativo usa UD-IQ3_XXS y 16K; faltan descarga, build,
+  matriz y prueba de agente sobre GPU.
+- [x] Seleccionar GGUF IQ3, fijar repositorio, revisión, archivo y checksum, y
+  confirmar Apache-2.0 en el modelo base. Se comienza con 16K; 32K depende del
+  margen de VRAM medido.
 - [ ] **P2** Archivar en HDD si no supera a los perfiles actuales en su rol.
 - Empezar por `docs/profile-candidates.md` y `docs/adding-models.md`.
 - Aceptación: perfil `experimental`, build en llama.cpp fijado, matriz completa,

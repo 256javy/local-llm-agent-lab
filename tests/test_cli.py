@@ -24,7 +24,7 @@ class CliTests(unittest.TestCase):
         result = invoke("profiles", "--json")
         self.assertEqual(result.returncode, 0, result.stderr)
         payload = json.loads(result.stdout)
-        self.assertEqual(len(payload), 4)
+        self.assertEqual(len(payload), 5)
 
     def test_effective_config(self) -> None:
         result = invoke("config", "show", "--effective")

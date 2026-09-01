@@ -1,0 +1,51 @@
+{
+  "id": "qwen3-coder-30b-a3b-iq3xxs",
+  "displayName": "Qwen3-Coder 30B-A3B IQ3_XXS",
+  "description": "Perfil de coding agent para una NVIDIA RTX 5060 Ti 16 GB. Usa el modelo MoE de 30,5B parámetros totales y 3,3B activos con cuantización dinámica IQ3_XXS, contexto inicial de 16K, offload completo, Flash Attention y caché KV Q4_0. Solo texto y sin modo thinking.",
+  "runtime": {
+    "adapter": "llama-cpp",
+    "repository": "https://github.com/ggml-org/llama.cpp.git",
+    "revision": "57291f2644af8c9df0dd8d44395881c5bdcf0ecd",
+    "cmakeArgs": [
+      "-DGGML_CUDA=ON",
+      "-DGGML_NATIVE=OFF",
+      "-DBUILD_SHARED_LIBS=OFF",
+      "-DCMAKE_CUDA_ARCHITECTURES=120"
+    ]
+  },
+  "model": {
+    "repository": "unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF",
+    "file": "Qwen3-Coder-30B-A3B-Instruct-UD-IQ3_XXS.gguf",
+    "revision": "b17cb02dd882d5b6ab62fc777ad2995f19668350",
+    "sha256": "d6b85d2b6633c55be3751848acc74fab40d28d93b27dabacd96ceabe10962057"
+  },
+  "server": {
+    "contextSize": 16384,
+    "parallel": 1,
+    "arguments": [
+      "-ngl",
+      "99",
+      "-fa",
+      "on",
+      "-ctk",
+      "q4_0",
+      "-ctv",
+      "q4_0",
+      "--mmap",
+      "--jinja"
+    ]
+  },
+  "requirements": {
+    "minimumVramGiB": 14,
+    "recommendedVramGiB": 16
+  },
+  "capabilities": {
+    "chatCompletions": true,
+    "responses": "verify",
+    "toolCalling": "verify",
+    "reasoning": false,
+    "vision": false,
+    "audio": false
+  },
+  "status": "experimental"
+}
