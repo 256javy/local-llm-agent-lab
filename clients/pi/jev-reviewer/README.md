@@ -1,8 +1,13 @@
 # Revisor de herramientas de Pi con Jev
 
 Extensión experimental opt-in para Pi **0.85.1**, SDK TypeSafe **0.6.0** y
-`jev-latest` (alias remoto mutable). No modifica el runtime local. Por defecto
-está **apagada**. Disponer de `TYPESAFE_API_KEY` no activa consultas.
+`jev-latest` (alias remoto mutable). No modifica el runtime local. Tiene dos capas
+independientes:
+
+- **Guardia de seguridad local** (`--jev-safety`, `enforce` por defecto al cargar
+  la extensión): reglas deterministas sobre `bash`, `write` y `edit`, sin red.
+- **Revisor de utilidad** (`--jev-mode`, **apagado** por defecto): evita tool calls
+  innecesarias o equivocadas. Disponer de `TYPESAFE_API_KEY` no activa consultas.
 
 ## Switches
 
@@ -14,6 +19,7 @@ está **apagada**. Disponer de `TYPESAFE_API_KEY` no activa consultas.
 | `--jev-reviewer off` | Brazo A; sin revisión, incluso si el modo es enforce. |
 | `--jev-reviewer local` | Brazo B; regla local de lectura idéntica vigente, sin API. |
 | `--jev-reviewer jev` | Brazo C; juicios semánticos y comprobaciones locales de evidencia. |
+| `--jev-safety off\|observe\|enforce` | Guardia de seguridad local; independiente del brazo, del alcance de datos y de los presupuestos. |
 
 Precedencia: flags, variables `JEV_MODE`/`JEV_REVIEWER`, archivo JSON y valores
 predeterminados. `--jev-config` prevalece sobre `JEV_CONFIG`. Los límites son
@@ -37,10 +43,72 @@ pi -e /home/javy/projects/local-llm-agent-lab/clients/pi/jev-reviewer/src/index.
   --jev-config /ruta/config-autorizada.json --jev-mode observe
 ```
 
-En Pi: `/jev status`, `/jev mode off|observe|enforce` y
-`/jev allow-once <review-id>`. El reintento equivalente ya tiene bypass automático
+En Pi: `/jev status`, `/jev mode off|observe|enforce`,
+`/jev safety off|observe|enforce` y `/jev allow-once <review-id>`. El reintento equivalente ya tiene bypass automático
 tras un bloqueo, como límite frente a bucles. La autorización caduca con el
 estado; no sustituye controles independientes de seguridad.
+
+## Guardia de seguridad
+
+Inspirada en el modo automático de Claude Code: deja pasar el trabajo normal
+de desarrollo y frena lo destructivo o lo que sale del proyecto. Analiza el
+comando con un parser de shell aproximado (comillas, `;`, `&&`, tuberías,
+redirecciones, `$(…)`, `bash -c`, `eval` y `cd`) y no envía nada a la red.
+
+| Veredicto | Ejemplos | Efecto en `enforce` |
+| --- | --- | --- |
+| `block` | `rm -rf` fuera del workspace, del workspace entero o con comodín en la raíz; borrar `.git`; `git reset --hard`, `git clean -f`, `git checkout .`, `git restore .`, push forzado; `sudo`; `curl … \| sh`; `chmod 777`; escribir fuera del workspace (salvo `/tmp`) o en rutas protegidas (`.env*`, `.git`); `dd`/`mkfs`; `docker system prune`; `npm publish`; `DROP TABLE` | Bloquea y devuelve a Pi una razón que pide una alternativa acotada. Un reintento idéntico **sigue** bloqueado. |
+| `ask` | `git push`, `kill`, `npm install -g`, `find … -delete` dentro del workspace, `curl -d @archivo` | Con UI, pide confirmación al usuario; sin UI (`-p`, JSON), bloquea. |
+
+`observe` solo registra; `off` no evalúa. Solo `/jev allow-once <review-id>`
+levanta un bloqueo de seguridad, y los bloqueos de seguridad no consumen
+el presupuesto de bloqueos de utilidad. Si el análisis falla, se pide
+confirmación (fail-closed), al revés que el revisor de utilidad (fail-open).
+`protectedPaths` en la configuración amplía las rutas protegidas; son
+patrones por segmento (`*` como comodín).
+
+**No es un sandbox.** Variables, scripts que se escriben y luego se ejecutan,
+o código ofuscado pueden eludirla. Es una red de contención para modelos
+pequeños, no una frontera de seguridad. Para ejecutar código no confiable,
+usar un aislamiento real (el runner del banco usa bubblewrap).
+
+En el brazo `jev` se añade además la pregunta `unsafe_action` a Jev para `bash`,
+`write` y `edit`. Mientras no tenga calibración, se registra y no bloquea.
+
+## Eficiencia local: comando fallido repetido
+
+`repeated_failed_command` bloquea un `bash` idéntico (mismo cwd y comando) a uno
+que acaba de fallar, si desde entonces no se ejecutó ningún `bash`, `edit` ni
+`write`. Es local: los resultados de `bash` no se envían. Funciona aunque no haya
+alcance de datos autorizado. Como los demás patrones, solo bloquea si la política
+lo habilita (`policies/deterministic.json`), y como máximo una vez por acción
+equivalente.
+
+## Banco pi-agent-bench
+
+`npm run bench` ejecuta las tareas de
+[`~/projects/pi-agent-bench`](../../../../pi-agent-bench/README.md) con cuatro
+variantes, dentro de **bubblewrap**: sistema en solo lectura, workspace y
+directorio de la ejecución escribibles, red compartida para el modelo local
+y Jev, y un `PI_CODING_AGENT_DIR` propio con copia de `models.json`/`settings.json`.
+
+| Variante | Utilidad | Seguridad |
+| --- | --- | --- |
+| `baseline` | apagada | `observe` (registra lo que habría bloqueado) |
+| `safety` | apagada | `enforce` |
+| `local` | reglas locales en `enforce` con `policies/deterministic.json` | `enforce` |
+| `jev` | ídem más juicios de Jev (sin calibrar: solo vetan o registran) | `enforce` |
+
+```bash
+npm run bench -- --variants baseline,safety,local,jev --repetitions 2 \
+  --provider local-lab --model gemma-4-12b-qat-mtp --profile gemma-4-12b-qat-mtp \
+  --authorize-synthetic-api
+```
+
+Resultados en `.local/jev-reviews/bench-*/`: `manifest.json` (incluye el commit
+del banco), `results.json` por ejecución, `summary.json` por variante, y por
+ejecución la sesión, la salida de Pi, el journal y el workspace final. El `verify.cjs`
+de cada tarea comprueba el éxito y la ausencia de daño desde fuera del sandbox.
 
 ## Pruebas sintéticas
 
@@ -174,11 +242,12 @@ los tests verifican IDs contra el JSONL de Pi, sin modificar trazas publicadas.
 
 ## Alcance del piloto
 
-Implementa el switch y el circuito para experimentar; no da por completada la
-campaña S6 del plan. Faltan calibración empírica, Gemma/Qwen end-to-end, tarifas,
+Implementa el switch, el circuito, la guardia de seguridad y el banco para
+experimentar; no da por completada la campaña S6 del plan. Faltan calibración empírica, Gemma/Qwen end-to-end, tarifas,
 intervalos estadísticos, anotación de todas las llamadas útiles y propuestas de
-mejora del harness validadas en tareas reservadas. `repeated_failed_command` sigue
-pendiente de un adaptador de resultados bash con autorización propia. Las pruebas
+mejora del harness validadas en tareas reservadas. `repeated_failed_command` existe
+como regla local; su versión semántica con Jev sigue pendiente de un adaptador de
+resultados bash con autorización propia. Las pruebas
 simuladas de contradicciones no acreditan la precisión del modelo remoto.
 
 Referencias: [plan](../../../docs/plans/pi-jev-tool-utility-reviewer.md),

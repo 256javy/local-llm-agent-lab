@@ -7,6 +7,7 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "synthetic": "tsx src/synthetic.ts",
+    "bench": "tsx src/bench.ts",
     "report": "tsx src/report.ts",
     "annotate": "tsx src/annotate.ts"
   },

@@ -14,8 +14,10 @@ import {
   candidate,
   localJudgments,
   reason,
+  localOnlyJudgments,
   validateResponse,
 } from "./policy.ts";
+import { assessSafety, safetyReason, type SafetyFinding } from "./safety.ts";
 import { fingerprint, scopedPath, State } from "./state.ts";
 import type { RecordWriter } from "./journal.ts";
 export class Reviewer {
@@ -23,10 +25,14 @@ export class Reviewer {
   calls = 0;
   failures = 0;
   blocks = 0;
+  safetyBlocks = 0;
   remoteTokens = 0;
   private controller = new AbortController();
   private blocked = new Map<string, string>();
   private bypass = new Set<string>();
+  // Safety blocks never auto-bypass on retry; only an explicit allow-once lifts them.
+  private safetyBlocked = new Map<string, string>();
+  private safetyBypass = new Set<string>();
   constructor(
     readonly config: Config,
     readonly client: ReviewerClient,
@@ -40,16 +46,24 @@ export class Reviewer {
     this.state.invalidate(clearObjective);
     this.blocked.clear();
     this.bypass.clear();
+    this.safetyBlocked.clear();
+    this.safetyBypass.clear();
   }
   setMode(mode: Mode) {
     this.reset();
     this.config.mode = mode;
     this.write({ kind: "mode", mode });
   }
+  setSafety(mode: Mode) {
+    this.reset();
+    this.config.safety = mode;
+    this.write({ kind: "safety_mode", mode });
+  }
   allowOnce(reviewId: string): boolean {
-    const key = this.blocked.get(reviewId);
+    const safetyKey = this.safetyBlocked.get(reviewId);
+    const key = safetyKey ?? this.blocked.get(reviewId);
     if (!key) return false;
-    this.bypass.add(key);
+    (safetyKey ? this.safetyBypass : this.bypass).add(key);
     this.write({ kind: "allow_once", reviewId });
     return true;
   }
@@ -125,6 +139,7 @@ export class Reviewer {
       reviewer: this.config.reviewer,
       action: "allow",
       wouldBlock: false,
+      safetyMode: this.config.safety,
       reason: "Revisor apagado.",
       latencyMs: 0,
       requestedModel: this.config.model,
@@ -141,14 +156,48 @@ export class Reviewer {
     const active = this.config.mode !== "off" && this.config.reviewer !== "off";
     const key = this.key(snapshot);
     let blockKey: string | undefined;
+    let safetyKey: string | undefined;
     const generation = this.controller.signal;
+    const repeated = localOnlyJudgments(
+      this.state.repeatedRun(action, cwd),
+      this.state.blindOverwrite(action, cwd),
+    );
+    const apply = (problem: ReturnType<typeof candidate>) => {
+      if (!problem) return;
+      d.wouldBlock = true;
+      d.pattern = problem.pattern;
+      d.reference = problem.reference;
+      d.reason = reason(problem, snapshot);
+      if (this.config.mode === "enforce") {
+        d.action = "block";
+        blockKey = key;
+      }
+    };
+    // Safety is local and independent of the utility arm, data scope and budgets.
+    let finding: SafetyFinding | undefined;
+    if (this.config.safety !== "off" && !userSignal?.aborted) {
+      try {
+        finding = assessSafety(action, cwd, this.config.protectedPaths);
+      } catch {
+        // Fail closed for safety (unlike utility): an unanalyzable action needs the user.
+        finding = { rule: "safety_error", verdict: "ask", detail: "No se pudo analizar la acción." };
+      }
+    }
+    if (finding) {
+      d.safety = finding;
+      d.reason = safetyReason(finding);
+      if (this.config.safety === "enforce" && !this.safetyBypass.delete(key)) {
+        d.action = "block";
+        d.wouldBlock = true;
+        safetyKey = key;
+      }
+    }
     try {
       if (userSignal?.aborted) {
         d.action = "abstain";
         d.reason = "cancelled";
-      } else if (active && invalid) {
-        d.action = "abstain";
-        d.reason = invalid;
+      } else if (safetyKey) {
+        // Blocked for safety: no utility review or remote query is needed.
       } else if (
         active &&
         (this.bypass.delete(key) ||
@@ -156,8 +205,16 @@ export class Reviewer {
           this.blocks >= this.config.maxBlocksPerTask)
       ) {
         d.reason = "Bypass por autorización, reintento o límite de bloqueos.";
+      } else if (active && invalid) {
+        d.action = "abstain";
+        d.reason = invalid;
+        const problem = candidate(this.config, snapshot, repeated);
+        if (problem) {
+          d.action = "allow";
+          apply(problem);
+        }
       } else if (active) {
-        let judgments = localJudgments(snapshot);
+        let judgments = [...localJudgments(snapshot), ...repeated];
         if (this.config.reviewer === "jev") {
           if (this.failures >= this.config.maxConsecutiveFailures)
             throw new Error("circuit_open");
@@ -204,7 +261,7 @@ export class Reviewer {
               this.remoteTokens = this.config.maxRemoteTokens;
             }
             // Semantic verification can veto a local duplicate candidate.
-            judgments = d.response.judgments;
+            judgments = [...d.response.judgments, ...repeated];
             this.failures = 0;
           } finally {
             clearTimeout(timer);
@@ -226,17 +283,8 @@ export class Reviewer {
             : "Estado obsoleto; respuesta descartada.";
         } else {
           const problem = candidate(this.config, snapshot, judgments);
-          d.reason = "Sin patrón calibrado aplicable.";
-          if (problem) {
-            d.wouldBlock = true;
-            d.pattern = problem.pattern;
-            d.reference = problem.reference;
-            d.reason = reason(problem, snapshot);
-            if (this.config.mode === "enforce") {
-              d.action = "block";
-              blockKey = key;
-            }
-          }
+          if (!finding) d.reason = "Sin patrón calibrado aplicable.";
+          apply(problem);
         }
       }
     } catch (error) {
@@ -274,6 +322,15 @@ export class Reviewer {
       d.action = "abstain";
       d.reason = "Journal no disponible; no se aplica el bloqueo.";
       blockKey = undefined;
+      // A safety block does not depend on the journal: it stays blocked.
+      if (safetyKey) {
+        d.action = "block";
+        d.reason = safetyReason(d.safety!);
+      }
+    }
+    if (safetyKey) {
+      this.safetyBlocked.set(d.reviewId, safetyKey);
+      this.safetyBlocks++;
     }
     if (blockKey) {
       this.blocked.set(d.reviewId, blockKey);

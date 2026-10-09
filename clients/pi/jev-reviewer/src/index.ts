@@ -17,6 +17,10 @@ export default function extension(pi: ExtensionAPI) {
     description: "Brazo: off, local o jev.",
     type: "string",
   });
+  pi.registerFlag("jev-safety", {
+    description: "Guardia de seguridad local: off, observe o enforce (predeterminado).",
+    type: "string",
+  });
   pi.registerFlag("jev-config", {
     description: "Configuración y alcance de datos autorizado (JSON).",
     type: "string",
@@ -33,12 +37,14 @@ export default function extension(pi: ExtensionAPI) {
       const config = loadConfig(typeof path === "string" ? path : undefined);
       const mode = pi.getFlag("jev-mode") ?? process.env.JEV_MODE;
       const arm = pi.getFlag("jev-reviewer") ?? process.env.JEV_REVIEWER;
+      const safety = pi.getFlag("jev-safety") ?? process.env.JEV_SAFETY;
       Object.assign(
         config,
         validateConfig({
           ...config,
           ...(mode ? { mode } : {}),
           ...(arm ? { reviewer: arm } : {}),
+          ...(safety ? { safety } : {}),
         }),
       );
       const sessionId = ctx.sessionManager.getSessionId();
@@ -61,13 +67,17 @@ export default function extension(pi: ExtensionAPI) {
         branchId,
         mode: config.mode,
         reviewer: config.reviewer,
+        safety: config.safety,
         model: config.model,
         localModel: ctx.model?.id ?? "unknown",
         configHash: hash(config),
         piVersion: "0.85.1",
         traceLink: "unlinked",
       });
-      notice(ctx, `Jev: ${config.mode}, brazo ${config.reviewer}.`);
+      notice(
+        ctx,
+        `Jev: ${config.mode}, brazo ${config.reviewer}; seguridad ${config.safety}.`,
+      );
     } catch {
       reviewer = undefined;
       notice(ctx, "Jev desactivado: configuración o journal inválidos.");
@@ -132,7 +142,24 @@ export default function extension(pi: ExtensionAPI) {
       const result = await current.review(action, ctx.cwd, ctx.signal);
       if (ctx.signal?.aborted)
         return { block: true, reason: "Tarea cancelada por el usuario." };
-      if (result.action === "block")
+      if (
+        result.action === "block" &&
+        result.safety?.verdict === "ask" &&
+        ctx.hasUI
+      ) {
+        // Like a permission prompt: the user decides, the model never does.
+        const ok = await ctx.ui.confirm(
+          "Jev: confirmar acción",
+          `${result.safety.detail}\n\n${String(action.input.command ?? action.input.path ?? "")}`,
+        );
+        try {
+          current.write({ kind: "safety_confirm", reviewId: result.reviewId, allowed: ok });
+        } catch {
+          // The user's decision stands even if it cannot be journaled.
+        }
+        if (!ok)
+          return { block: true, reason: `${result.reason} El usuario la rechazó. [${result.reviewId}]` };
+      } else if (result.action === "block")
         return { block: true, reason: `${result.reason} [${result.reviewId}]` };
       current.state.before(action, ctx.cwd);
     } catch {
@@ -158,7 +185,7 @@ export default function extension(pi: ExtensionAPI) {
   });
   pi.registerCommand("jev", {
     description:
-      "status | mode off/observe/enforce | allow-once <review-id> | task <objetivo completo>",
+      "status | mode off/observe/enforce | safety off/observe/enforce | allow-once <review-id> | task <objetivo completo>",
     handler: async (args, ctx) => {
       if (!reviewer) {
         notice(
@@ -181,6 +208,11 @@ export default function extension(pi: ExtensionAPI) {
           ["off", "observe", "enforce"].includes(value)
         )
           reviewer.setMode(value as Mode);
+        else if (
+          command === "safety" &&
+          ["off", "observe", "enforce"].includes(value)
+        )
+          reviewer.setSafety(value as Mode);
         else if (command === "allow-once") {
           notice(
             ctx,
@@ -192,13 +224,13 @@ export default function extension(pi: ExtensionAPI) {
         } else if (command && command !== "status") {
           notice(
             ctx,
-            "Uso: /jev status | mode off/observe/enforce | allow-once <review-id>",
+            "Uso: /jev status | mode off/observe/enforce | safety off/observe/enforce | allow-once <review-id>",
           );
           return;
         }
         notice(
           ctx,
-          `Jev: ${reviewer.config.mode}; brazo ${reviewer.config.reviewer}; consultas ${reviewer.calls}; bloqueos ${reviewer.blocks}; fallos consecutivos ${reviewer.failures}.`,
+          `Jev: ${reviewer.config.mode}; brazo ${reviewer.config.reviewer}; seguridad ${reviewer.config.safety}; consultas ${reviewer.calls}; bloqueos ${reviewer.blocks}; bloqueos de seguridad ${reviewer.safetyBlocks}; fallos consecutivos ${reviewer.failures}.`,
         );
       } catch {
         notice(ctx, "No se pudo registrar el cambio del revisor.");

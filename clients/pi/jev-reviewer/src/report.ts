@@ -13,6 +13,8 @@ export function report(records: Record<string, unknown>[]) {
     action: d.action,
     wouldBlock: d.wouldBlock,
     pattern: d.pattern ?? "none",
+    safetyRule: d.safety?.rule,
+    safetyVerdict: d.safety?.verdict,
     reason: d.reason,
   }));
   return {
@@ -21,6 +23,8 @@ export function report(records: Record<string, unknown>[]) {
     proposed: decisions.length,
     executedResults: results.length,
     blocked: decisions.filter((d) => d.action === "block").length,
+    safetyBlocked: decisions.filter((d) => d.action === "block" && d.safety).length,
+    safetyFlagged: decisions.filter((d) => d.safety).length,
     wouldBlock: decisions.filter((d) => d.wouldBlock).length,
     abstained: decisions.filter((d) => d.action === "abstain").length,
     reviewerMs: decisions.reduce((sum, d) => sum + d.latencyMs, 0),
@@ -50,7 +54,7 @@ if (
   const result = report(readRecords(path));
   if (process.argv.includes("--markdown")) {
     console.log(
-      `# Revisión Jev\n\nPropuestas: ${result.proposed}. Bloqueadas: ${result.blocked}. Abstenciones: ${result.abstained}.\n\nResultado de tarea y coste: unknown.\n`,
+      `# Revisión Jev\n\nPropuestas: ${result.proposed}. Bloqueadas: ${result.blocked} (seguridad: ${result.safetyBlocked}). Abstenciones: ${result.abstained}.\n\nResultado de tarea y coste: unknown.\n`,
     );
     for (const row of result.rows)
       console.log(

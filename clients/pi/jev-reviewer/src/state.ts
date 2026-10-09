@@ -1,4 +1,5 @@
 import { realpathSync, readFileSync, statSync } from "node:fs";
+import { parseShell } from "./safety.ts";
 import { dirname, relative, resolve, basename } from "node:path";
 import {
   hash,
@@ -58,8 +59,23 @@ export class State {
   evidence: Evidence[] = [];
   pending = new Map<
     string,
-    { action: Action; fingerprint?: string; path?: string }
+    {
+      action: Action;
+      cwd: string;
+      mutationsBefore: number;
+      fingerprint?: string;
+      path?: string;
+    }
   >();
+  // Last run of each shell command (cwd+command): outcome, consecutive identical runs and
+  // the mutation count right after it, to tell whether anything changed since.
+  runs = new Map<
+    string,
+    { toolCallId: string; mutations: number; failed: boolean; streak: number }
+  >();
+  mutations = 0;
+  // Files whose content the agent observed or produced in this session (absolute paths).
+  known = new Set<string>();
   sessionId = "unknown";
   branchId = "unknown";
   constructor(readonly config: Config) {}
@@ -67,7 +83,9 @@ export class State {
     this.revision++;
     this.evidence = [];
     this.pending.clear();
+    this.runs.clear();
     if (clearObjective) {
+      this.known.clear();
       this.objective = [];
       this.incompleteHistory = true;
       this.taskVersion++;
@@ -88,6 +106,8 @@ export class State {
     const fp = path ? fingerprint(path, this.config.maxInputBytes) : undefined;
     this.pending.set(action.toolCallId, {
       action: structuredClone(action),
+      cwd,
+      mutationsBefore: this.mutations,
       path,
       fingerprint: fp,
     });
@@ -95,13 +115,74 @@ export class State {
     if (["bash", "edit", "write"].includes(action.toolName)) {
       this.evidence = [];
       this.revision++;
+      this.mutations++;
     }
+  }
+  private commandKey(action: Action, cwd: string) {
+    return hash({ cwd, command: action.input.command });
+  }
+  /** Relative path of an existing, non-empty file that `write` would replace unseen. */
+  blindOverwrite(action: Action, cwd: string): string | undefined {
+    if (action.toolName !== "write" || typeof action.input.path !== "string")
+      return;
+    const target = resolve(cwd, action.input.path);
+    try {
+      const stat = statSync(target);
+      if (!stat.isFile() || stat.size === 0 || this.known.has(target)) return;
+    } catch {
+      return;
+    }
+    return relative(cwd, target) || action.input.path;
+  }
+  private observe(action: Action, cwd: string) {
+    const input = action.input;
+    if (["read", "write", "edit"].includes(action.toolName) && typeof input.path === "string")
+      this.known.add(resolve(cwd, input.path));
+    if (action.toolName === "bash" && typeof input.command === "string") {
+      let dir = cwd;
+      for (const cmd of parseShell(input.command)) {
+        const [name, ...args] = cmd.words;
+        if (name === "cd" && args[0]) dir = resolve(dir, args[0]);
+        if (["cat", "head", "tail", "nl", "less", "more", "bat"].includes(name ?? ""))
+          for (const a of args) if (!a.startsWith("-")) this.known.add(resolve(dir, a));
+      }
+    }
+  }
+  /**
+   * The same command proposed again with nothing executed since: after a failure, or after
+   * two identical successful runs in a row (one retry is tolerated for flaky checks and polling).
+   */
+  repeatedRun(
+    action: Action,
+    cwd: string,
+  ): { pattern: "repeated_failed_command" | "repeated_command"; toolCallId: string } | undefined {
+    if (action.toolName !== "bash" || typeof action.input.command !== "string")
+      return;
+    const prior = this.runs.get(this.commandKey(action, cwd));
+    if (!prior || prior.mutations !== this.mutations) return;
+    if (prior.failed)
+      return { pattern: "repeated_failed_command", toolCallId: prior.toolCallId };
+    if (prior.streak >= 2)
+      return { pattern: "repeated_command", toolCallId: prior.toolCallId };
   }
   result(action: Action, content: unknown, isError: boolean, details: unknown) {
     const prior = this.pending.get(action.toolCallId);
     if (!prior) return; // Bloqueos no ejecutados no cambian el estado.
     this.pending.delete(action.toolCallId);
     this.revision++;
+    if (!isError) this.observe(prior.action, prior.cwd);
+    if (action.toolName === "bash" && typeof prior.action.input.command === "string") {
+      const key = hash({ cwd: prior.cwd, command: prior.action.input.command });
+      const last = this.runs.get(key);
+      const chained =
+        last && last.mutations === prior.mutationsBefore && last.failed === isError;
+      this.runs.set(key, {
+        toolCallId: action.toolCallId,
+        mutations: this.mutations,
+        failed: isError,
+        streak: chained ? last.streak + 1 : 1,
+      });
+    }
     if (
       action.toolName !== "read" ||
       !prior?.path ||

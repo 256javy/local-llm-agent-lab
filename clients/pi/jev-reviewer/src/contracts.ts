@@ -1,10 +1,15 @@
 import { createHash } from "node:crypto";
+import type { SafetyFinding } from "./safety.ts";
 
 export const patterns = [
   "redundant_read",
   "task_conflict",
   "refuted_precondition",
   "off_task_action",
+  "repeated_failed_command",
+  "repeated_command",
+  "blind_overwrite",
+  "unsafe_action",
 ] as const;
 export type Pattern = (typeof patterns)[number];
 export type Mode = "off" | "observe" | "enforce";
@@ -70,6 +75,8 @@ export interface Config {
   maxBlocksPerTask: number;
   maxConsecutiveFailures: number;
   storageRoot: string;
+  safety: Mode;
+  protectedPaths: string[];
   scope?: {
     root: string;
     paths: string[];
@@ -90,6 +97,8 @@ export interface Decision {
   wouldBlock: boolean;
   pattern?: Pattern;
   reference?: string;
+  safety?: SafetyFinding;
+  safetyMode: Mode;
   reason: string;
   latencyMs: number;
   requestedModel: string;

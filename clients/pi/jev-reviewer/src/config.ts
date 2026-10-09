@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 import { patterns, type Config } from "./contracts.ts";
+import { defaultProtectedPaths } from "./safety.ts";
 export const defaults: Config = {
   mode: "off",
   reviewer: "jev",
@@ -15,6 +16,8 @@ export const defaults: Config = {
   storageRoot: fileURLToPath(
     new URL("../../../../.local/jev-reviews/", import.meta.url),
   ),
+  safety: "enforce",
+  protectedPaths: defaultProtectedPaths,
   requirements: [],
   calibration: [],
 };
@@ -22,7 +25,8 @@ export function validateConfig(value: unknown): Config {
   const c = { ...defaults, ...(value as object) };
   if (
     !["off", "observe", "enforce"].includes(c.mode) ||
-    !["off", "local", "jev"].includes(c.reviewer)
+    !["off", "local", "jev"].includes(c.reviewer) ||
+    !["off", "observe", "enforce"].includes(c.safety)
   )
     throw new Error("Modo o revisor inválido.");
   for (const key of [
@@ -36,6 +40,11 @@ export function validateConfig(value: unknown): Config {
     if (!Number.isSafeInteger(c[key]) || c[key] <= 0)
       throw new Error(`Límite inválido: ${key}`);
   }
+  if (
+    !Array.isArray(c.protectedPaths) ||
+    c.protectedPaths.some((p) => typeof p !== "string" || !p || p.includes("/"))
+  )
+    throw new Error("protectedPaths inválido: patrones de segmento sin '/'.");
   if (!isAbsolute(c.storageRoot) || typeof c.model !== "string" || !c.model)
     throw new Error("Se requiere storageRoot absoluto y modelo.");
   if (
