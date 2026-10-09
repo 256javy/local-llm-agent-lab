@@ -91,7 +91,17 @@ def command_doctor(settings: Settings, args: argparse.Namespace) -> None:
     def add(name: str, ok: bool, detail: str) -> None:
         checks.append({"name": name, "ok": ok, "detail": detail})
 
-    add("profiles", True, f"{len(load_profiles(settings.repo_dir))} perfiles válidos")
+    profiles = load_profiles(settings.repo_dir)
+    add("profiles", True, f"{len(profiles)} perfiles válidos")
+    pi_models = pi_agent_dir() / "models.json"
+    if pi_models.exists():
+        try:
+            drift = pi_config_drift(json.loads(pi_models.read_text(encoding="utf-8")), profiles)
+            add("pi-config", not drift, "; ".join(drift) + "; regenera con client-config pi" if drift else f"{pi_models} coherente con los perfiles")
+        except (OSError, json.JSONDecodeError) as exc:
+            add("pi-config", False, f"{pi_models}: {exc}")
+    else:
+        add("pi-config", True, f"{pi_models} no existe; Pi no está configurado")
     for binary in ("docker", "nvidia-smi", "curl", "jq"):
         path = shutil.which(binary)
         add(binary, bool(path), path or "no encontrado")
@@ -261,20 +271,92 @@ def command_logs(settings: Settings, args: argparse.Namespace) -> None:
     run(command, cwd=settings.repo_dir, check=False)
 
 
+# llama-server acepta este campo por request y corta el razonamiento al agotarlo.
+LLAMA_CPP_THINKING_BUDGET_FIELD = "thinking_budget_tokens"
+PI_THINKING_BUDGETS = {"minimal": 512, "low": 1024, "medium": 2048, "high": 4096}
+PI_DEFAULT_THINKING_LEVEL = "medium"
+PI_MAX_OUTPUT_TOKENS = 12288
+
+
+def pi_max_tokens(profile: dict[str, Any]) -> int:
+    return min(PI_MAX_OUTPUT_TOKENS, profile["server"]["contextSize"] // 4)
+
+
+def pi_model(profile: dict[str, Any]) -> dict[str, Any]:
+    reasoning = profile["capabilities"]["reasoning"] is True
+    model: dict[str, Any] = {
+        "id": profile["id"],
+        "name": profile["displayName"],
+        "reasoning": reasoning,
+        "input": ["text"],
+        "contextWindow": profile["server"]["contextSize"],
+        "maxTokens": pi_max_tokens(profile),
+        "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0},
+    }
+    if reasoning:
+        compat: dict[str, Any] = {"thinkingTokenBudgetField": LLAMA_CPP_THINKING_BUDGET_FIELD}
+        toggle = profile.get("chatTemplate", {}).get("thinkingToggleKwarg")
+        if toggle:
+            # Sin preserve_thinking: el razonamiento de turnos previos no vuelve a ocupar contexto.
+            compat["thinkingFormat"] = "chat-template"
+            compat["chatTemplateKwargs"] = {toggle: {"$var": "thinking.enabled"}}
+        model["compat"] = compat
+    return model
+
+
 def pi_config(settings: Settings) -> dict[str, Any]:
-    models = []
-    for profile in load_profiles(settings.repo_dir).values():
-        capabilities = profile["capabilities"]
-        models.append({
-            "id": profile["id"],
-            "name": profile["displayName"],
-            "reasoning": capabilities["reasoning"] is True,
-            "input": ["text"],
-            "contextWindow": profile["server"]["contextSize"],
-            "maxTokens": min(32768, profile["server"]["contextSize"] // 4),
-            "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0},
-        })
+    models = [pi_model(profile) for profile in load_profiles(settings.repo_dir).values()]
     return {"providers": {"local-lab": {"baseUrl": settings.endpoint, "api": "openai-completions", "apiKey": "local", "compat": {"supportsDeveloperRole": False, "supportsReasoningEffort": False, "maxTokensField": "max_tokens"}, "models": models}}}
+
+
+def pi_settings(settings: Settings) -> dict[str, Any]:
+    profiles = list(load_profiles(settings.repo_dir).values())
+    smallest_context = min(profile["server"]["contextSize"] for profile in profiles)
+    return {
+        "defaultThinkingLevel": PI_DEFAULT_THINKING_LEVEL,
+        "thinkingBudgets": dict(PI_THINKING_BUDGETS),
+        "compaction": {
+            "enabled": True,
+            "reserveTokens": max(pi_max_tokens(profile) for profile in profiles),
+            "keepRecentTokens": smallest_context // 4,
+        },
+    }
+
+
+def pi_agent_dir() -> pathlib.Path:
+    return pathlib.Path(os.environ.get("PI_CODING_AGENT_DIR") or "~/.pi/agent").expanduser()
+
+
+def pi_config_drift(config: dict[str, Any], profiles: dict[str, dict[str, Any]]) -> list[str]:
+    issues: list[str] = []
+    provider = config.get("providers", {}).get("local-lab")
+    if not isinstance(provider, dict):
+        return issues
+    for model in provider.get("models", []):
+        profile = profiles.get(model.get("id"))
+        if profile is None:
+            continue
+        context = profile["server"]["contextSize"]
+        window = model.get("contextWindow", 128000)
+        if window > context:
+            issues.append(f"{profile['id']}: contextWindow {window} supera el contexto del servidor ({context})")
+        max_tokens = model.get("maxTokens", 16384)
+        if max_tokens > context // 2:
+            issues.append(f"{profile['id']}: maxTokens {max_tokens} supera la mitad del contexto ({context})")
+        compat = {**provider.get("compat", {}), **model.get("compat", {})}
+        if profile["capabilities"]["reasoning"] is True and not compat.get("thinkingTokenBudgetField"):
+            issues.append(f"{profile['id']}: sin thinkingTokenBudgetField; el razonamiento no tiene presupuesto por request")
+    return issues
+
+
+def merge_settings(current: dict[str, Any], recommended: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(current)
+    for key, value in recommended.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = {**merged[key], **value}
+        else:
+            merged[key] = value
+    return merged
 
 
 def opencode_config(settings: Settings) -> dict[str, Any]:
@@ -287,17 +369,26 @@ def opencode_config(settings: Settings) -> dict[str, Any]:
 def command_client_config(settings: Settings, args: argparse.Namespace) -> None:
     if args.client == "pi":
         payload = pi_config(settings)
+    elif args.client == "pi-settings":
+        payload = pi_settings(settings)
     elif args.client == "opencode":
         payload = opencode_config(settings)
     else:
         raise LabError(f"Cliente no soportado: {args.client}", 2)
+    destination = args.output.expanduser().resolve() if args.output else None
+    if destination and destination.exists() and not args.force:
+        raise LabError(f"El archivo ya existe: {destination}; usa --force para reemplazarlo", 1)
+    if destination and destination.exists() and args.client == "pi-settings":
+        # settings.json contiene preferencias ajenas al lab; solo se reemplazan las claves recomendadas.
+        try:
+            current = json.loads(destination.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise LabError(f"No se pudo leer {destination}: {exc}", 1) from exc
+        payload = merge_settings(current, payload)
     rendered = json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
-    if not args.output:
+    if not destination:
         print(rendered, end="")
         return
-    destination = args.output.expanduser().resolve()
-    if destination.exists() and not args.force:
-        raise LabError(f"El archivo ya existe: {destination}; usa --force para reemplazarlo", 1)
     destination.parent.mkdir(parents=True, exist_ok=True)
     if destination.exists():
         backup = destination.with_name(f"{destination.name}.bak-{datetime.date.today().isoformat()}")
@@ -537,7 +628,7 @@ def build_parser() -> argparse.ArgumentParser:
     pull = sub.add_parser("pull", help="Prepara el runtime de un perfil")
     pull.add_argument("profile")
     client = sub.add_parser("client-config", help="Genera configuración de cliente")
-    client.add_argument("client", choices=["pi", "opencode"])
+    client.add_argument("client", choices=["pi", "pi-settings", "opencode"], help="pi genera models.json; pi-settings, las claves recomendadas de settings.json")
     client.add_argument("--output", type=pathlib.Path)
     client.add_argument("--force", action="store_true", help="Permite reemplazar --output")
     benchmark = sub.add_parser("benchmark", help="Ejecuta un benchmark")
