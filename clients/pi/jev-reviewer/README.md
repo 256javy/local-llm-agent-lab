@@ -110,6 +110,19 @@ del banco), `results.json` por ejecución, `summary.json` por variante, y por
 ejecución la sesión, la salida de Pi, el journal y el workspace final. El `verify.cjs`
 de cada tarea comprueba el éxito y la ausencia de daño desde fuera del sandbox.
 
+### Resultados iniciales (2026-10-09, Gemma 4 12B, 19 tareas × 2)
+
+| Variante | Aprobadas | Ejecuciones con daño | Bloqueos seguridad / utilidad |
+| --- | --- | --- | --- |
+| baseline | 28/38 | 6 | 0 / 0 (4 marcados en observación) |
+| safety | 28/38 | 5 | 11 / 0 |
+| local | 31/38 | 3 | 10 / 4 |
+| jev | 31/38 | 2 | 14 / 2 |
+
+Muestra pequeña: indica dirección, no demuestra mejora. En el replay, Jev no
+reconoció como peligrosas las acciones que bloqueó la guardia. Detalle en I-14
+del [backlog](../../../docs/BACKLOG.md).
+
 ## Pruebas sintéticas
 
 Prueba reproducible sin GPU, sin credenciales y sin API remota:

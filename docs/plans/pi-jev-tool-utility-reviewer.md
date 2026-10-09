@@ -10,6 +10,12 @@ con y sin revisor. El SDK y Pi están fijados; Jev usa un alias mutable.
 Se validó Pi real con un modelo HTTP simulado, sin GPU ni consultas remotas.
 No hay calibración empírica ni mejora de rendimiento demostrada.
 
+Actualización 2026-10-09: se añadieron una guardia de seguridad local
+determinista, reglas locales de eficiencia (sobrescritura a ciegas, comandos
+repetidos y bucles de llamadas inválidas) y el banco `pi-agent-bench`. Las
+primeras campañas con Gemma 4 12B y Jev real están resumidas en I-14 del
+[backlog](../BACKLOG.md). Los juicios semánticos de Jev siguen en observación.
+
 Las secciones siguientes conservan el diseño objetivo. El README del paquete
 distingue lo implementado de la campaña y adaptadores aún pendientes; en
 particular, S6 no se considera completado por ejecutar fixtures simulados.
