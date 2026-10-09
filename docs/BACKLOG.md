@@ -230,6 +230,38 @@ evidencia contradictoria.
   El diseño objetivo sigue en [el plan](plans/pi-jev-tool-utility-reviewer.md);
   S6 y las mejoras de rendimiento no se declaran completados.
 
+### I-15 — Control de razonamiento y contexto en clientes
+
+- [x] Presupuesto de razonamiento en servidor (`--reasoning-budget` con mensaje
+      de cierre) y sampling recomendado para Qwen en los perfiles.
+- [x] `client-config pi` envía `thinking_budget_tokens` y `enable_thinking`
+      vía `chat-template`, sin `preserve_thinking`; `pi-settings` fija
+      presupuestos por nivel, nivel `medium` y compactación para 32K.
+- [x] `doctor` detecta deriva entre `models.json` de Pi y los perfiles.
+- Evidencia 2026-10-09: una sesión real de Qwen 3.6 terminó por `length`
+  con 30K caracteres de razonamiento y luego por contexto agotado; el
+  `models.json` declaraba 98304 de contexto para Qwen 3.8 (servidor: 32768).
+  Con los perfiles nuevos, Qwen 3.6, Qwen 3.8 y Gemma 12B respetan
+  `thinking_budget_tokens` por request y `enable_thinking: false`; el
+  presupuesto del servidor corta en ~4K tokens y el modelo responde. Pi 0.85.1
+  completó una auditoría real con `thinking_budget_tokens: 2048`, compactación
+  intermedia y archivo escrito. Smoke de Gemma 12B y Qwen 3.8 aprobados. Tests:
+  80/80. Sin medición de calidad: una corrida por configuración no la acredita.
+- [ ] **P1** Repetir la tarea de auditoría y una tarea de edición 5 veces por
+      perfil, con y sin presupuesto, y registrar `length`, compactaciones y
+      resultado.
+- [ ] **P2** Equivalente para OpenCode (`chat_template_kwargs` por modelo); hoy
+      solo lo cubre el presupuesto del servidor.
+- [ ] **P2** Prueba acotada de [fx](https://github.com/vercel-labs/fx)
+      (Vercel Labs, Apache-2.0, experimental): binario fijado a un tag, sin
+      `curl | bash`, `FX_AUTO_UPGRADE=0`, `FX_PERMISSION_MODE=ask`,
+      `context_window` igual al servidor y modelo precalentado. Comparar con Pi
+      en las mismas tareas: compactación con handles recuperables, `length` y
+      tool calls inválidas. fx no controla el razonamiento en conexiones custom:
+      depende del presupuesto del servidor.
+- Observación: Qwen 3.6 Q2 copia mal rutas largas (UUID) y escribe archivos en
+  directorios inexistentes; preferir Qwen 3.8 o Gemma para edición.
+
 ## Fase 0 — Bootstrap
 
 - [x] Crear repositorio y documentar el alcance inicial.

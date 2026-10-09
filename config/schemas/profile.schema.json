@@ -32,6 +32,13 @@
         "arguments": {"type": "array", "items": {"type": "string"}}
       }
     },
+    "chatTemplate": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "thinkingToggleKwarg": {"type": "string", "minLength": 1}
+      }
+    },
     "requirements": {
       "type": "object",
       "required": ["minimumVramGiB", "recommendedVramGiB"],

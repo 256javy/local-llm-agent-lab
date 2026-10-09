@@ -93,6 +93,33 @@ npm install -g @mariozechner/pi-coding-agent
 Si el archivo ya existe, genera primero la configuración sin `--output` y
 combina el proveedor `local-lab`; no fuerces un reemplazo sin revisar el backup.
 
+### Razonamiento y contexto en Pi
+
+Los modelos locales tienden a razonar sin límite hasta agotar `max_tokens` o el
+contexto. El lab lo controla en dos capas:
+
+- **Servidor:** cada perfil fija `--reasoning-budget` y un mensaje de cierre, de
+  modo que ningún cliente puede razonar sin tope. Los perfiles Qwen fijan además
+  el sampling recomendado (`temp 0.6`, `top-k 20`, `presence-penalty 1.0`).
+- **Pi:** `client-config pi` declara `thinking_budget_tokens` y el kwarg
+  `enable_thinking` de la plantilla (`chatTemplate.thinkingToggleKwarg` del
+  perfil), así los niveles de thinking de Pi se traducen en presupuestos reales y
+  `off` desactiva el razonamiento. No se usa `preserve_thinking` para que el
+  razonamiento de turnos previos no consuma contexto.
+
+`client-config pi-settings` genera los presupuestos por nivel, el nivel por
+defecto y la compactación adecuados para ventanas de 32K. Con `--output` y
+`--force` fusiona solo esas claves en un `settings.json` existente y conserva el
+resto de preferencias:
+
+```bash
+./bin/llm-lab client-config pi-settings --output ~/.pi/agent/settings.json --force
+```
+
+`doctor` compara `~/.pi/agent/models.json` (o `$PI_CODING_AGENT_DIR`) con los
+perfiles y falla si `contextWindow` supera el contexto del servidor o falta el
+presupuesto de razonamiento.
+
 ## Validación rápida
 
 ```bash
