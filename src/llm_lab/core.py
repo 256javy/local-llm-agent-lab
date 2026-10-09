@@ -137,6 +137,11 @@ def validate_profile(profile: dict[str, Any], source: str = "perfil") -> list[st
         errors.append(f"{source}: server.parallel inválido")
     if not isinstance(server.get("arguments"), list) or not all(isinstance(arg, str) for arg in server.get("arguments", [])):
         errors.append(f"{source}: server.arguments debe ser una lista de strings")
+    chat_template = profile.get("chatTemplate")
+    if chat_template is not None:
+        toggle = chat_template.get("thinkingToggleKwarg") if isinstance(chat_template, dict) else None
+        if not isinstance(chat_template, dict) or set(chat_template) - {"thinkingToggleKwarg"} or (toggle is not None and (not isinstance(toggle, str) or not toggle)):
+            errors.append(f"{source}: chatTemplate inválido")
     return errors
 
 
