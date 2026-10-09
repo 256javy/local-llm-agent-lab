@@ -1,0 +1,14 @@
+{
+  "mode": "off",
+  "reviewer": "jev",
+  "model": "jev-latest",
+  "deadlineMs": 1500,
+  "maxCallsPerTask": 100,
+  "maxRemoteTokens": 50000,
+  "maxInputBytes": 16384,
+  "maxBlocksPerTask": 5,
+  "maxConsecutiveFailures": 3,
+  "storageRoot": "/home/javy/projects/local-llm-agent-lab/.local/jev-reviews",
+  "requirements": [],
+  "calibration": []
+}

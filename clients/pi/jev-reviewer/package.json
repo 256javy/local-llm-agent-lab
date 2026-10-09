@@ -1,0 +1,22 @@
+{
+  "name": "@llm-lab/pi-jev-reviewer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "synthetic": "tsx src/synthetic.ts",
+    "report": "tsx src/report.ts",
+    "annotate": "tsx src/annotate.ts"
+  },
+  "dependencies": {
+    "@typesafe-ai/sdk": "0.6.0"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "0.85.1",
+    "@types/node": "24.10.1",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3"
+  }
+}

@@ -205,6 +205,31 @@ evidencia contradictoria.
 - Aceptación inicial: matriz validable y rechazo seguro de evals incompletos;
   automatización de agentes no es requisito del primer slice.
 
+### I-14 — Piloto del revisor Jev para Pi
+
+- [x] Paquete opt-in `clients/pi/jev-reviewer`, Pi 0.85.1/SDK 0.6.0 fijados,
+      `off|observe|enforce` y brazos `off|local|jev`; apagado por defecto.
+- [x] Contexto previo, alcance explícito, invalidación, deadline, circuito,
+      límites, journal privado, reporte y anotaciones separadas.
+- [x] Runner sintético con restauración en directorios nuevos, manifest y
+      comprobaciones externas al fixture; simulación sin API por defecto.
+- [x] Pi real con modelo HTTP simulado: switches, bloqueo, recuperación e IDs
+      enlazados con el JSONL de la sesión. No acredita calidad de Jev.
+- [ ] **P1** Campaña explícita con API real y perfiles Gemma/Qwen; calibración
+      por patrón/herramienta, costes y revisión de falsos positivos.
+- [ ] **P2** Adaptador autorizado para errores bash repetidos, enlace con
+      TraceStore y ciclo de mejora del harness con tareas reservadas.
+- Validación 2026-09-17: typecheck y 42 tests del paquete; 18 decisiones sintéticas
+  simuladas (3 fixtures × 3 brazos × 2 repeticiones). Sin consultas a TypeSafe,
+  descargas de modelos, builds de runtimes ni modificación del perfil activo.
+  `profiles`, `config show --effective`, `doctor` y Compose correctos.
+  Suite Python: 72/73; `test_storage_archive_and_restore` rechaza mover modelos
+  porque el contenedor administrado está activo. Reproducido con XDG_STATE_HOME
+  aislado; la guarda también consulta Docker. No se detuvo el runtime.
+- Uso y límites: [README del piloto](../clients/pi/jev-reviewer/README.md).
+  El diseño objetivo sigue en [el plan](plans/pi-jev-tool-utility-reviewer.md);
+  S6 y las mejoras de rendimiento no se declaran completados.
+
 ## Fase 0 — Bootstrap
 
 - [x] Crear repositorio y documentar el alcance inicial.

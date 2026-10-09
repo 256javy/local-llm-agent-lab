@@ -2,8 +2,17 @@
 
 ## Intención y estado
 
-Plan ajustado el 2026-09-17. Solo describe trabajo futuro: no hay integración
-implementada, envíos de sesiones a TypeSafe ni mejora de rendimiento demostrada.
+Plan ajustado el 2026-09-17. Existe un piloto implementado en
+[`clients/pi/jev-reviewer`](../../clients/pi/jev-reviewer/README.md), con switch
+`off|observe|enforce`, brazos `off|local|jev`, fixtures y runner sintético.
+La implementación inicial queda **off por defecto**, para comparar explícitamente
+con y sin revisor. El SDK y Pi están fijados; Jev usa un alias mutable.
+Se validó Pi real con un modelo HTTP simulado, sin GPU ni consultas remotas.
+No hay calibración empírica ni mejora de rendimiento demostrada.
+
+Las secciones siguientes conservan el diseño objetivo. El README del paquete
+distingue lo implementado de la campaña y adaptadores aún pendientes; en
+particular, S6 no se considera completado por ejecutar fixtures simulados.
 
 El usuario inicia aquí un modelo local (Gemma 4 12B, Qwen 3.8 u otro), entra
 en un repositorio de código, abre Pi, selecciona ese modelo y trabaja. Jev se
@@ -324,8 +333,8 @@ detección: medir errores propuestos y éxito, no solo el número de bloqueos.
 
 ## Implementación por entregables
 
-Rutas y comandos de esta sección son **propuestos**, todavía no existen. El
-paquete vivirá en `clients/pi/jev-reviewer/`, con TypeScript, `package.json`,
+Esta sección describe los entregables objetivo; el piloto ya implementa las
+rutas y comandos documentados en su README. El paquete vive en `clients/pi/jev-reviewer/`, con TypeScript, `package.json`,
 lockfile y dependencias fijadas. No requiere completar I-10 a I-12 para probar
 el flujo; su formato se alineará con esas interfaces al implementarlas.
 
@@ -348,14 +357,14 @@ El modelo continúa iniciándose con las herramientas actuales del laboratorio.
 Desde el repositorio donde se realizará la tarea:
 
 ```bash
-# Ejemplo futuro, después de implementar e instalar las dependencias del paquete.
+# Después de instalar las dependencias del paquete; arranca apagado por defecto.
 cd /ruta/al/repositorio
 pi -e /home/javy/projects/local-llm-agent-lab/clients/pi/jev-reviewer/src/index.ts
 ```
 
-Seleccionar el modelo local como hasta ahora. Proponer `/jev status`,
+Seleccionar el modelo local como hasta ahora. Usar `/jev status`,
 `/jev mode off|observe|enforce` y `/jev allow-once <review-id>` como controles
-de la extensión. El modo inicial será `observe`, con configuración explícita
+de la extensión. El modo inicial es `off`; `observe` requiere activación y configuración explícita
 del proyecto y del alcance de datos. `allow-once` solo aplica al reintento de
 la acción y estado referenciados; no reutiliza una autorización obsoleta.
 
@@ -409,7 +418,7 @@ Pi para el circuito propuesta → bloqueo → reformulación → resultado.
 
 Al implementar, ejecutar los tests/typecheck del paquete y las validaciones
 prescritas en `AGENTS.md`; API real, descargas y benchmarks serán ejecuciones
-explícitas y registradas. Esta revisión documental no instala ni activa nada.
+explícitas y registradas. La implementación no se descubre ni se activa globalmente; la campaña real sigue siendo explícita.
 
 ## Referencias
 
