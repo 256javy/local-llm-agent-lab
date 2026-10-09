@@ -7,6 +7,7 @@ import { createJevClient } from "./jev-client.ts";
 import { Journal } from "./journal.ts";
 import { Reviewer } from "./reviewer.ts";
 import { hash, type Action, type Mode } from "./contracts.ts";
+import { LoopGuard, loopHint } from "./loop.ts";
 
 export default function extension(pi: ExtensionAPI) {
   pi.registerFlag("jev-mode", {
@@ -27,6 +28,7 @@ export default function extension(pi: ExtensionAPI) {
   });
   let reviewer: Reviewer | undefined;
   let journal: Journal | undefined;
+  let loop: LoopGuard | undefined;
   function notice(ctx: ExtensionContext, text: string) {
     if (ctx.hasUI) ctx.ui.notify(text, "info");
     else process.stderr.write(text + "\n");
@@ -51,6 +53,7 @@ export default function extension(pi: ExtensionAPI) {
       const branchId = ctx.sessionManager.getLeafId() ?? "root";
       journal = new Journal(config.storageRoot, sessionId, branchId);
       reviewer = new Reviewer(config, createJevClient(config), journal.write);
+      loop = new LoopGuard(config.maxIdenticalFailures);
       if (
         ctx.sessionManager
           .getBranch()
@@ -100,7 +103,46 @@ export default function extension(pi: ExtensionAPI) {
       }
     }
   });
-  pi.on("session_compact", () => reviewer?.reset(true));
+  pi.on("session_compact", () => {
+    reviewer?.reset(true);
+    loop?.reset();
+  });
+  pi.on("message_end", (event, ctx) => {
+    if (!reviewer || !loop) return;
+    const message = event.message as unknown as {
+      role: string;
+      content?: unknown;
+      toolCallId?: string;
+      toolName?: string;
+      isError?: boolean;
+    };
+    if (message.role === "assistant") return void loop.assistant(message);
+    if (message.role !== "toolResult") return;
+    const verdict = loop.result(message);
+    if (!verdict) return;
+    const config = reviewer.config;
+    const enforce = config.mode === "enforce" && config.reviewer !== "off";
+    try {
+      journal?.write({ kind: "loop", ...verdict, applied: enforce, provenance: "calculated" });
+    } catch {
+      // Journal failures never change the agent's flow.
+    }
+    if (!enforce) return;
+    if (verdict.action === "abort") {
+      notice(ctx, `Jev: ${verdict.streak} fallos idénticos seguidos de ${verdict.toolName}; se detiene la ejecución.`);
+      ctx.abort();
+      return;
+    }
+    return {
+      message: {
+        ...event.message,
+        content: [
+          ...(Array.isArray(message.content) ? message.content : []),
+          { type: "text", text: loopHint(verdict) },
+        ],
+      } as typeof event.message,
+    };
+  });
   pi.on("session_tree", (_event, ctx) => {
     if (!reviewer) return;
     reviewer.reset(true);

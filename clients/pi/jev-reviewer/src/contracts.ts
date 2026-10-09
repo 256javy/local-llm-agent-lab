@@ -74,6 +74,7 @@ export interface Config {
   maxRemoteTokens: number;
   maxBlocksPerTask: number;
   maxConsecutiveFailures: number;
+  maxIdenticalFailures: number;
   storageRoot: string;
   safety: Mode;
   protectedPaths: string[];

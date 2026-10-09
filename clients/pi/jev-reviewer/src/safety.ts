@@ -1,5 +1,7 @@
+import { spawnSync } from "node:child_process";
+import { readFileSync, statSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { basename, isAbsolute, relative, resolve, sep } from "node:path";
+import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import type { Action } from "./contracts.ts";
 
 // Deterministic, local-only guard: nothing here is sent to a remote service.
@@ -184,16 +186,40 @@ export class SafetyGuard {
   private readonly tmp = resolve(tmpdir());
   // Directory the next shell command runs in; follows `cd` within one command line.
   private dir: string;
+  // Literal shell variables assigned earlier in the analyzed text (e.g. inside a script).
+  private vars = new Map<string, string>();
+  private gitRoot: string | null | undefined;
   constructor(
     readonly cwd: string,
     readonly protectedPaths: string[] = defaultProtectedPaths,
+    // Files the agent itself created in this session: deleting them is not irreversible loss.
+    readonly agentFiles: ReadonlySet<string> = new Set(),
   ) {
     this.dir = cwd;
+  }
+  /** Untracked, non-ignored files under `p`: git cannot bring them back once deleted. */
+  private untracked(p: string): string[] {
+    if (this.gitRoot === undefined) {
+      const r = spawnSync("git", ["rev-parse", "--show-toplevel"], { cwd: this.cwd, encoding: "utf8", timeout: 2000 });
+      this.gitRoot = r.status === 0 ? r.stdout.trim() : null;
+    }
+    if (!this.gitRoot) return [];
+    const r = spawnSync("git", ["ls-files", "--others", "--exclude-standard", "-z", "--", p], {
+      cwd: this.cwd,
+      encoding: "utf8",
+      timeout: 2000,
+    });
+    if (r.status !== 0) return [];
+    return r.stdout
+      .split("\0")
+      .filter(Boolean)
+      .filter((f) => !this.agentFiles.has(resolve(this.gitRoot!, f)));
   }
 
   /** Resolves a shell path; undefined when it depends on unknown variables or substitutions. */
   private path(raw: string): string | undefined {
     let p = raw.replace(/^~(?=\/|$)/, this.home).replace(/^\$\{?HOME\}?(?=\/|$)/, this.home);
+    p = p.replace(/\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?/g, (m, name) => this.vars.get(name) ?? m);
     if (p.includes("$") || (this.dir.includes("$") && !isAbsolute(p))) return;
     return resolve(this.dir, p);
   }
@@ -204,7 +230,7 @@ export class SafetyGuard {
   private scratch(p: string): boolean {
     return (
       ["/dev/null", "/dev/stdout", "/dev/stderr", "/dev/tty"].includes(p) ||
-      p === this.tmp || p.startsWith(this.tmp + sep)
+      (p.startsWith(this.tmp + sep) && !(this.cwd + sep).startsWith(p + sep))
     );
   }
   private protectedPath(p: string): string | undefined {
@@ -237,6 +263,53 @@ export class SafetyGuard {
       return { rule: `${op}_protected_path`, verdict: "block", detail: `${op} sobre una ruta protegida (${prot}).` };
     if (recursive && /[*?[]/.test(raw) && !raw.replace(/^\.\//, "").includes("/"))
       return { rule: `${op}_toplevel_glob`, verdict: "block", detail: `${op} recursivo con comodín en la raíz del workspace (${raw}).` };
+    if (op === "delete" && !/[*?[]/.test(raw)) {
+      const lost = this.untracked(p);
+      if (lost.length)
+        return {
+          rule: "delete_untracked",
+          verdict: "ask",
+          detail: `Borra archivos sin versionar que git no puede recuperar (${lost.slice(0, 3).join(", ")}${lost.length > 3 ? ", …" : ""}). Si no los creaste tú en esta tarea, consérvalos o pregunta.`,
+        };
+    }
+  }
+  /** Reads a local script (≤64 KiB) so its commands get the same analysis as the command line. */
+  private script(raw: string, depth: number, explicit = true): SafetyFinding[] {
+    const p = this.path(raw);
+    if (!p || !this.inside(p)) return [];
+    let text: string;
+    try {
+      if (!statSync(p).isFile() || statSync(p).size > 65536) return [];
+      text = readFileSync(p, "utf8");
+    } catch {
+      return [];
+    }
+    // Executed directly (./x): only shell scripts, by extension or shebang.
+    if (!explicit && !/\.(sh|bash|zsh)$/.test(p) && !/^#!.*\b(ba|z|da|k)?sh\b/.test(text))
+      return [];
+    const dir = dirname(p);
+    // Resolve the usual "directory of this script" idioms to a literal path.
+    text = text
+      .replace(/\$\(\s*dirname\s+"?\$\{?(0|BASH_SOURCE(\[0\])?)\}?"?\s*\)|`dirname\s+"?\$0"?`/g, dir)
+      .replace(/\$\(\s*cd\s+"?([^"$()]+)"?\s*&&\s*pwd\s*\)/g, "$1");
+    const saved = { dir: this.dir, vars: this.vars };
+    this.dir = this.cwd;
+    this.vars = new Map();
+    const rel = relative(this.cwd, p);
+    const findings = this.shell(text, depth + 1).map((f) => ({ ...f, detail: `script ${rel}: ${f.detail}` }));
+    this.dir = saved.dir;
+    this.vars = saved.vars;
+    return findings;
+  }
+  private packageScript(name: string, depth: number): SafetyFinding[] {
+    try {
+      const pkg = JSON.parse(readFileSync(resolve(this.dir, "package.json"), "utf8"));
+      const body = pkg?.scripts?.[name];
+      if (typeof body !== "string") return [];
+      return this.shell(body, depth + 1).map((f) => ({ ...f, detail: `npm run ${name}: ${f.detail}` }));
+    } catch {
+      return [];
+    }
   }
 
   assess(action: Action): SafetyFinding[] {
@@ -263,6 +336,15 @@ export class SafetyGuard {
         const f = this.target(r, "redirect", false);
         if (f) findings.push({ ...f, verdict: f.verdict === "ask" ? "ask" : "block" });
       }
+      const assignments = cmd.words.filter((w) => /^[A-Za-z_][A-Za-z0-9_]*=/.test(w));
+      if (assignments.length === cmd.words.length)
+        for (const a of assignments) {
+          const [name, ...value] = a.split("=");
+          const literal = value.join("=");
+          // Values from substitutions or other variables stay unknown.
+          if (literal.includes("$") || cmd.nested.length) this.vars.delete(name);
+          else this.vars.set(name, literal);
+        }
       const { words, sudo } = strip(cmd.words);
       if (sudo)
         findings.push({ rule: "privilege_escalation", verdict: "block", detail: "Escalada de privilegios (sudo/su/doas)." });
@@ -286,6 +368,15 @@ export class SafetyGuard {
       if ((shells.includes(name) || name === "eval") && (args.includes("-c") || name === "eval")) {
         const body = name === "eval" ? args.join(" ") : args[args.indexOf("-c") + 1];
         if (body) findings.push(...this.shell(body, depth + 1));
+      } else if (shells.includes(name) || name === "source" || name === ".") {
+        const file = args.find((a) => !a.startsWith("-"));
+        if (file) findings.push(...this.script(file, depth));
+      } else if (words[0].includes("/") && !isAbsolute(words[0])) {
+        findings.push(...this.script(words[0], depth, false));
+      }
+      if (["npm", "pnpm", "yarn"].includes(name)) {
+        const run = args[0] === "run" || args[0] === "run-script" ? args[1] : ["test", "start", "build"].includes(args[0]) ? args[0] : undefined;
+        if (run) findings.push(...this.packageScript(run, depth));
       }
       findings.push(...this.command(name, args, text));
     }
@@ -494,13 +585,30 @@ export class SafetyGuard {
   }
 }
 
-export function assessSafety(action: Action, cwd: string, protectedPaths?: string[]): SafetyFinding | undefined {
-  const findings = new SafetyGuard(resolve(cwd), protectedPaths).assess(action);
+export function assessSafety(
+  action: Action,
+  cwd: string,
+  protectedPaths?: string[],
+  agentFiles?: ReadonlySet<string>,
+): SafetyFinding | undefined {
+  const findings = new SafetyGuard(resolve(cwd), protectedPaths, agentFiles).assess(action);
   return findings.find((f) => f.verdict === "block") ?? findings[0];
 }
 
+// Concrete safe alternatives: small models recover better with a next step than with a "no".
+const alternatives: Record<string, string> = {
+  git_discard_changes: "Para descartar cambios de archivos concretos usa `git restore <archivo>` o `git checkout -- <archivo>`; los archivos sin versionar no se tocan.",
+  git_clean: "Revisa `git status` y borra solo los archivos concretos que la tarea pida.",
+  delete_untracked: "Bórralos solo si los creaste tú en esta tarea; si no, consérvalos o muévelos a una carpeta de respaldo dentro del proyecto.",
+  delete_toplevel_glob: "Nombra explícitamente los archivos o directorios a borrar.",
+  delete_unresolved_target: "Sustituye la variable por una ruta literal dentro del proyecto y comprueba que no quede vacía.",
+  permissions_world_writable: "Usa permisos mínimos, p. ej. `chmod +x <script>` o `chmod 755 <script>`.",
+  remote_code_execution: "No ejecutes código descargado; lee el script y aplica solo los pasos necesarios.",
+  privilege_escalation: "Trabaja sin privilegios dentro del proyecto o pide al usuario que lo haga.",
+};
 export function safetyReason(f: SafetyFinding): string {
+  const alt = alternatives[f.rule] ?? (f.rule.endsWith("_outside_workspace") ? "Trabaja solo con rutas dentro del proyecto." : "");
   return f.verdict === "block"
-    ? `Acción bloqueada por seguridad (${f.rule}): ${f.detail} No la reformules para eludir el control; busca una alternativa no destructiva, limitada a lo que pide la tarea, o explica al usuario por qué es necesaria.`
-    : `Acción retenida por seguridad (${f.rule}): ${f.detail} Requiere confirmación del usuario; si no es imprescindible, usa una alternativa acotada a la tarea.`;
+    ? `Acción bloqueada por seguridad (${f.rule}): ${f.detail} ${alt} No la reformules para eludir el control; usa una alternativa acotada a la tarea o explica al usuario por qué es necesaria.`
+    : `Acción retenida por seguridad (${f.rule}): ${f.detail} ${alt} Requiere confirmación del usuario; si no es imprescindible, usa una alternativa acotada a la tarea.`;
 }

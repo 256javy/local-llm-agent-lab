@@ -76,6 +76,8 @@ export class State {
   mutations = 0;
   // Files whose content the agent observed or produced in this session (absolute paths).
   known = new Set<string>();
+  // Files the agent created or rewrote with `write` (absolute paths).
+  written = new Set<string>();
   sessionId = "unknown";
   branchId = "unknown";
   constructor(readonly config: Config) {}
@@ -86,6 +88,7 @@ export class State {
     this.runs.clear();
     if (clearObjective) {
       this.known.clear();
+      this.written.clear();
       this.objective = [];
       this.incompleteHistory = true;
       this.taskVersion++;
@@ -138,6 +141,8 @@ export class State {
     const input = action.input;
     if (["read", "write", "edit"].includes(action.toolName) && typeof input.path === "string")
       this.known.add(resolve(cwd, input.path));
+    if (action.toolName === "write" && typeof input.path === "string")
+      this.written.add(resolve(cwd, input.path));
     if (action.toolName === "bash" && typeof input.command === "string") {
       let dir = cwd;
       for (const cmd of parseShell(input.command)) {

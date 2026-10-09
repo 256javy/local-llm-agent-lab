@@ -1,9 +1,11 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { assessSafety, parseShell } from "../src/safety.ts";
+import { LoopGuard, loopHint } from "../src/loop.ts";
 import { validateConfig } from "../src/config.ts";
 import { Reviewer } from "../src/reviewer.ts";
 import type { Action, Config } from "../src/contracts.ts";
@@ -259,4 +261,71 @@ test("tercera ejecución consecutiva de un comando exitoso sin cambios se bloque
   await run("4");
   await run("5", "ls");
   assert.notEqual((await run("6")).action, "block");
+});
+
+function gitRepo(t: TestContext) {
+  const root = mkdtempSync(join(tmpdir(), "jev-git-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const git = (...args: string[]) =>
+    assert.equal(spawnSync("git", args, { cwd: root }).status, 0, args.join(" "));
+  git("init", "-q");
+  mkdirSync(join(root, "src"));
+  mkdirSync(join(root, "notes"));
+  mkdirSync(join(root, "scripts"));
+  writeFileSync(join(root, ".gitignore"), "dist/\n");
+  writeFileSync(join(root, "src/a.js"), "1\n");
+  git("add", "-A");
+  git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "init");
+  mkdirSync(join(root, "dist"));
+  writeFileSync(join(root, "dist/out.js"), "x\n");
+  writeFileSync(join(root, "notes/clientes.md"), "valioso\n");
+  return root;
+}
+
+test("borrar archivos sin versionar pide confirmación; rastreados, ignorados o creados por el agente pasan", (t) => {
+  const root = gitRepo(t);
+  const v = (command: string, agent?: Set<string>) =>
+    assessSafety(bash(command), root, undefined, agent)?.verdict ?? "allow";
+  assert.equal(v("rm -rf notes"), "ask");
+  assert.equal(v("rm notes/clientes.md"), "ask");
+  assert.equal(v("rm -rf dist"), "allow", "ignorado: regenerable");
+  assert.equal(v("rm src/a.js"), "allow", "rastreado: recuperable con git");
+  assert.equal(v("rm notes/clientes.md", new Set([join(root, "notes/clientes.md")])), "allow");
+});
+
+test("los scripts ejecutados se analizan: variables vacías en rm -rf bloquean, literales y dirname $0 se resuelven", (t) => {
+  const root = gitRepo(t);
+  const script = (name: string, body: string) => writeFileSync(join(root, "scripts", name), body);
+  script("deploy.sh", '#!/bin/sh\ncd "$(dirname "$0")/.."\nBUILD_DIR=$(node -e "x")\nrm -rf "./$BUILD_DIR"/*\n');
+  script("clean.sh", '#!/bin/sh\nset -e\ncd "$(dirname "$0")/.."\nOUT=dist\nrm -rf "$OUT"\n');
+  script("nuke.sh", "rm -rf ~/\n");
+  writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: { clean: "rm -rf ../", test: "node t.js" } }));
+  const f = (command: string) => assessSafety(bash(command), root);
+  assert.equal(f("bash scripts/deploy.sh")?.verdict, "block");
+  assert.match(f("sh scripts/deploy.sh")!.detail, /^script scripts\/deploy\.sh:/);
+  assert.equal(f("./scripts/deploy.sh")?.verdict, "block");
+  assert.equal(f("bash scripts/clean.sh"), undefined);
+  assert.equal(f("source scripts/nuke.sh")?.verdict, "block");
+  assert.equal(f("npm run clean")?.verdict, "block");
+  assert.equal(f("npm test"), undefined);
+  writeFileSync(join(root, "tool.js"), "const a = 1 > 0; // rm -rf /\n");
+  assert.equal(f("./tool.js"), undefined, "no interpreta JS como shell");
+});
+
+test("loop guard: fallos idénticos consecutivos dan pista y luego abortan; un éxito o una llamada distinta reinicia", () => {
+  const guard = new LoopGuard(4);
+  const call = (id: string, args: unknown, isError = true) => {
+    guard.assistant({ role: "assistant", content: [{ type: "toolCall", id, name: "edit", arguments: args }] });
+    return guard.result({ role: "toolResult", toolCallId: id, toolName: "edit", isError });
+  };
+  const bad = { edits: [] };
+  assert.equal(call("1", bad), undefined);
+  assert.equal(call("2", bad)?.action, "hint");
+  assert.equal(call("3", bad)?.action, "hint");
+  assert.equal(call("4", bad)?.action, "abort");
+  assert.equal(call("5", { path: "x", edits: [] }), undefined, "otros argumentos: nueva racha");
+  assert.equal(call("6", bad), undefined);
+  call("7", bad, false);
+  assert.equal(guard.streak, 0);
+  assert.match(loopHint({ streak: 3, toolName: "edit", action: "hint" }), /intento idéntico número 3 de edit/);
 });

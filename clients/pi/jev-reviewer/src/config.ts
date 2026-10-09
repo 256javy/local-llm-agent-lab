@@ -13,6 +13,7 @@ export const defaults: Config = {
   maxInputBytes: 16384,
   maxBlocksPerTask: 5,
   maxConsecutiveFailures: 3,
+  maxIdenticalFailures: 6,
   storageRoot: fileURLToPath(
     new URL("../../../../.local/jev-reviews/", import.meta.url),
   ),
@@ -36,6 +37,7 @@ export function validateConfig(value: unknown): Config {
     "maxRemoteTokens",
     "maxBlocksPerTask",
     "maxConsecutiveFailures",
+    "maxIdenticalFailures",
   ] as const) {
     if (!Number.isSafeInteger(c[key]) || c[key] <= 0)
       throw new Error(`Límite inválido: ${key}`);

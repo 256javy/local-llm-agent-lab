@@ -177,7 +177,7 @@ export class Reviewer {
     let finding: SafetyFinding | undefined;
     if (this.config.safety !== "off" && !userSignal?.aborted) {
       try {
-        finding = assessSafety(action, cwd, this.config.protectedPaths);
+        finding = assessSafety(action, cwd, this.config.protectedPaths, this.state.written);
       } catch {
         // Fail closed for safety (unlike utility): an unanalyzable action needs the user.
         finding = { rule: "safety_error", verdict: "ask", detail: "No se pudo analizar la acción." };
