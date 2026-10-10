@@ -350,18 +350,39 @@ evidencia contradictoria.
       `path` repetidas en bucle; Gemma 12B muestra el mismo patrón (10 `edit`
       sin `path` y claves con comillas). `context` falla en 16K por copiar mal
       la clave (`MANDUARÍA` por `MANDUARÁ`, 3/3), no por memoria.
-- [~] **P1** Gemma como agente: `edit` sin `path` (2026-10-10, 26B QAT).
-  - Causa: el modelo, no el parser. La salida cruda (`/apply-template` +
-    `/completion`) ya trae `edits:[{…,path:…}]`; llama.cpp la traduce fiel.
-    La plantilla del GGUF ordena propiedades y argumentos con `dictsort`
-    (`edits` antes que `path`) y el modelo cierra mal el array anidado.
-  - Misma petición, 20 muestras: orden alfabético 10/20 malformadas; `path`
-    primero (plantilla `config/templates/gemma-4-ordered-args.jinja`,
-    `chatTemplate.file`) 0/20. El bucle de 132 errores era una sola ejecución
-    copiando su propia llamada inválida.
-  - Pendiente: repetir la matriz `pi-agent-bench` con la plantilla en 26B,
-    verificar que la plantilla del 12B sea idéntica y aplicarla; medir la
-    variante `local`. Evidencia local en `.local/gemma-tool-call-2026-10-10/`.
+- [x] **P1** Gemma como agente: dos defectos de la plantilla del GGUF
+      (2026-10-10; 12B y 26B QAT traen la misma plantilla, sha256 `845f1ee`).
+  - `edit` sin `path`: la plantilla ordena propiedades y argumentos con
+    `dictsort` (`edits` antes que `path`) y el modelo cierra mal el array
+    anidado. Misma petición, 20 muestras: orden alfabético 10/20
+    malformadas; orden del cliente 0/20.
+  - Corte tras un resultado de tool: con thinking apagado, después de un
+    `tool_response` la plantilla no emite el bloque vacío
+    `<|channel>thought\n<channel|>` que sí pone al abrir un turno; el modelo
+    abre el canal y lo cierra con `<tool_call|>`, que llama.cpp entrega como
+    razonamiento y Pi toma como fin de sesión. 19/20 muestras cortadas sin el
+    bloque, 0/45 con él. Afectaba a 22/84 ejecuciones del 26B y también al 12B;
+    cualquier cliente OpenAI-compatible con tools y thinking apagado lo sufre.
+  - Ambos corregidos en `config/templates/gemma-4-ordered-args.jinja`
+    (`chatTemplate.file`), aplicada a los dos perfiles Gemma. Matriz
+    `pi-agent-bench` 21 tareas ×2 (llama.cpp `57291f2`, GPU sin escritorio):
+
+    | Perfil | Variante | Aprobadas | Con daño | Errores tool | Tiempo |
+    | --- | --- | --- | --- | --- | --- |
+    | Gemma 26B QAT, solo orden | baseline | 26/42 | 7 | 25 | 209 s |
+    | Gemma 26B QAT, solo orden | local | 24/42 | 6 | 23 | 238 s |
+    | Gemma 26B QAT, plantilla completa | baseline | 35/42 | 5 | 21 | 218 s |
+    | Gemma 26B QAT, plantilla completa | local | 34/42 | 3 | 26 | 230 s |
+    | Gemma 12B QAT, plantilla completa | baseline | 32/42 | 8 | 24 | 496 s |
+    | Gemma 12B QAT, plantilla completa | local | 35/42 | 4 | 28 | 275 s |
+
+    Antes: 26B 28/42 con 152 errores, 12B 30/42 con 42. Lo que queda es
+    criterio del modelo: sobrescribir `test.cjs` en `control-create-file`,
+    borrar `notes/clientes.md`, actualizar snapshots y no vaciar
+    `logs/`/`tmp/`/`cache/` en `free-space`. Con el monitor en la iGPU el 26B
+    ocupa 14 782 MiB y el 12B 8 080 MiB; queda probar `--ubatch-size 512` en
+    el 26B. Evidencia en `.local/gemma-tool-call-2026-10-10/` y
+    `.local/jev-reviews/bench-{DhPEau,08YPfx,owiZke}`.
 - [ ] **P1** Probar LiteRT-LM como backend de Gemma 4 (investigación
       2026-10-10, v0.18.0, Apache-2.0: Linux usa WebGPU/Dawn sobre Vulkan, no
       CUDA; `litert-lm serve` OpenAI-compatible con tools, sin reutilizar KV

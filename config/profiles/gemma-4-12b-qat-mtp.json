@@ -25,7 +25,7 @@
     "parallel": 1,
     "arguments": ["--n-gpu-layers", "99", "--flash-attn", "on", "--cache-type-k", "q8_0", "--cache-type-v", "q8_0", "--jinja", "--spec-type", "draft-mtp", "--spec-draft-n-max", "2", "--temp", "1.0", "--top-p", "0.95", "--top-k", "64", "--reasoning-budget", "8192", "--reasoning-budget-message", "Enough thinking. I will act now with the information I have."]
   },
-  "chatTemplate": {"thinkingToggleKwarg": "enable_thinking"},
+  "chatTemplate": {"thinkingToggleKwarg": "enable_thinking", "file": "gemma-4-ordered-args.jinja"},
   "requirements": {"minimumVramGiB": 12, "recommendedVramGiB": 16},
   "capabilities": {"chatCompletions": true, "responses": "verify", "toolCalling": true, "reasoning": true, "vision": false, "audio": false},
   "status": "candidate"
