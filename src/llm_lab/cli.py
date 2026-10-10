@@ -20,6 +20,7 @@ from .core import (
     compose_command,
     compose_env,
     control_lock,
+    data_mount_problem,
     docker_container_running,
     docker_project_running,
     get_profile,
@@ -29,6 +30,7 @@ from .core import (
     load_settings,
     port_available,
     read_state,
+    require_data_mount,
     run,
     wait_for_health,
     write_state,
@@ -77,6 +79,7 @@ def command_config(settings: Settings, args: argparse.Namespace) -> None:
         "endpoint": settings.endpoint,
         "dataDir": str(settings.data_dir),
         "archiveDir": str(settings.archive_dir) if settings.archive_dir else None,
+        "dataMount": str(settings.data_mount) if settings.data_mount else None,
         "cudaArchitecturesOverride": settings.cuda_architectures or None,
         "defaultProfile": settings.default_profile,
         "apiKeyConfigured": bool(settings.api_key),
@@ -126,6 +129,9 @@ def command_doctor(settings: Settings, args: argparse.Namespace) -> None:
         add("storage", disk.free >= 20 * 1024**3, f"{disk.free / 1024**3:.1f} GiB libres en {settings.data_dir}")
     except OSError as exc:
         add("storage", False, str(exc))
+    if settings.data_mount:
+        problem = data_mount_problem(settings)
+        add("data-mount", problem is None, problem or f"{settings.data_dir} en {settings.data_mount}")
     if args.json:
         print_json({"ok": all(check["ok"] for check in checks), "checks": checks})
     else:
@@ -161,6 +167,7 @@ def stop_managed(settings: Settings, profile: dict[str, Any] | None = None) -> N
 
 
 def start_profile(settings: Settings, profile: dict[str, Any], *, build_only: bool = False, build: bool = True) -> None:
+    require_data_mount(settings)
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     env = compose_env(settings, profile)
     if build_only:
@@ -391,9 +398,12 @@ def command_client_config(settings: Settings, args: argparse.Namespace) -> None:
         return
     destination.parent.mkdir(parents=True, exist_ok=True)
     if destination.exists():
-        backup = destination.with_name(f"{destination.name}.bak-{datetime.date.today().isoformat()}")
-        if backup.exists():
-            raise LabError(f"El backup del día ya existe: {backup}", 1)
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H%M%S")
+        backup = destination.with_name(f"{destination.name}.bak-{timestamp}")
+        counter = 1
+        while backup.exists():
+            backup = destination.with_name(f"{destination.name}.bak-{timestamp}-{counter}")
+            counter += 1
         shutil.copy2(destination, backup)
         print(f"Backup: {backup}")
     destination.write_text(rendered, encoding="utf-8")
@@ -467,6 +477,7 @@ def command_pull(settings: Settings, args: argparse.Namespace) -> None:
     with control_lock(settings):
         if docker_container_running() or read_state(settings):
             raise LabError("Detén el perfil activo antes de preparar otro", 1)
+        require_data_mount(settings)
         settings.data_dir.mkdir(parents=True, exist_ok=True)
         env = compose_env(settings, profile)
         run(compose_command(settings, "build", "server"), cwd=settings.repo_dir, env=env)

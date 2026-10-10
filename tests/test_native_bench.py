@@ -36,7 +36,7 @@ class ExecutionTests(unittest.TestCase):
     def test_missing_model_points_to_pull(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             settings = load_settings(ROOT)
-            settings = settings.__class__(**{**settings.__dict__, "data_dir": pathlib.Path(temporary)})
+            settings = settings.__class__(**{**settings.__dict__, "data_dir": pathlib.Path(temporary), "data_mount": None})
             profile = load_profiles(ROOT)["gemma-4-12b-qat-mtp"]
             with self.assertRaisesRegex(LabError, "llm-lab pull"):
                 execute_native_bench(
@@ -48,7 +48,7 @@ class ExecutionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = pathlib.Path(temporary)
             settings = load_settings(ROOT)
-            settings = settings.__class__(**{**settings.__dict__, "data_dir": root / "data"})
+            settings = settings.__class__(**{**settings.__dict__, "data_dir": root / "data", "data_mount": None})
             profile = load_profiles(ROOT)["gemma-4-12b-qat-mtp"]
             model = settings.data_dir / "models" / profile["id"] / profile["model"]["file"]
             model.parent.mkdir(parents=True)

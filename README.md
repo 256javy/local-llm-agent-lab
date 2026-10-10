@@ -28,7 +28,7 @@ arquitectura, operación, validación y extensiones pendientes.
 cp .env.example .env
 ./bin/llm-lab doctor
 ./bin/llm-lab profiles
-./bin/llm-lab start gemma-4-12b-qat-mtp
+./bin/llm-lab start qwen-3.8-27b-iq3xxs-mtp
 ./bin/llm-lab health
 ```
 
@@ -77,7 +77,7 @@ Para escribir en una ruta nueva de forma explícita:
 ```
 
 La CLI se niega a reemplazar archivos salvo que se use `--force`; en ese caso
-crea antes un backup `archivo.bak-YYYY-MM-DD`.
+crea antes un backup `archivo.bak-YYYY-MM-DD-HHMMSS`.
 
 Pi y OpenCode deben ejecutarse desde el directorio del proyecto sobre el que
 trabajarán. La inferencia permanece aislada en Docker.
@@ -177,6 +177,11 @@ procedencia y limitaciones.
 Por defecto, modelos, fuentes y caches se guardan bajo
 `~/.local/share/local-llm-agent-lab`. Define `LLM_LAB_DATA_DIR` para cambiarlo.
 Estos artefactos nunca se versionan.
+
+Para fijar los modelos a un disco concreto (por ejemplo un HDD), define también
+`LLM_LAB_DATA_MOUNT` con su punto de montaje: `doctor` lo verifica y `start`,
+`pull` y `bench` se niegan a operar si `LLM_LAB_DATA_DIR` queda fuera de él o si
+el disco no está montado, para que una descarga nunca caiga en otro disco.
 
 ```bash
 ./bin/llm-lab storage report

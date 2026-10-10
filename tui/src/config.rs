@@ -126,7 +126,7 @@ pub fn load(repo_dir: PathBuf) -> Result<Settings> {
         host: lookup("LLM_LAB_HOST", "127.0.0.1", &file),
         port,
         data_dir,
-        default_profile: lookup("LLM_LAB_DEFAULT_PROFILE", "gemma-4-12b-qat-mtp", &file),
+        default_profile: lookup("LLM_LAB_DEFAULT_PROFILE", "qwen-3.8-27b-iq3xxs-mtp", &file),
         api_key: lookup("LLM_LAB_API_KEY", "", &file),
         start_timeout,
         stop_timeout,

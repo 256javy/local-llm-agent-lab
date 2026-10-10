@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from llm_lab.core import LabError, compose_env, docker_project_running, http_json, load_profiles, load_settings, parse_env_file, port_available, validate_profile
+from llm_lab.core import LabError, wait_for_health, compose_env, data_mount_problem, require_data_mount, docker_project_running, http_json, load_profiles, load_settings, parse_env_file, port_available, validate_profile
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -34,6 +34,23 @@ class EnvironmentTests(unittest.TestCase):
                 settings = load_settings(ROOT)
             self.assertEqual(settings.archive_dir, pathlib.Path(temporary).resolve())
 
+    def test_data_mount_requires_data_dir_inside_mounted_path(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            outside = {"LLM_LAB_DATA_DIR": temporary, "LLM_LAB_DATA_MOUNT": "/proc"}
+            with mock.patch.dict(os.environ, outside, clear=False):
+                settings = load_settings(ROOT)
+            self.assertIn("no está bajo", data_mount_problem(settings))
+            unmounted = {"LLM_LAB_DATA_DIR": f"{temporary}/data", "LLM_LAB_DATA_MOUNT": temporary}
+            with mock.patch.dict(os.environ, unmounted, clear=False):
+                settings = load_settings(ROOT)
+            self.assertIn("no está montado", data_mount_problem(settings))
+            with self.assertRaises(LabError):
+                require_data_mount(settings)
+        with mock.patch.dict(os.environ, {"LLM_LAB_DATA_DIR": "/proc/self", "LLM_LAB_DATA_MOUNT": "/proc"}, clear=False):
+            self.assertIsNone(data_mount_problem(load_settings(ROOT)))
+        with mock.patch.dict(os.environ, {"LLM_LAB_DATA_MOUNT": ""}, clear=False):
+            self.assertIsNone(data_mount_problem(load_settings(ROOT)))
+
     def test_cuda_architecture_override_replaces_profile_default(self) -> None:
         with mock.patch.dict(os.environ, {"LLM_LAB_CUDA_ARCHITECTURES": "89"}, clear=False):
             settings = load_settings(ROOT)
@@ -49,10 +66,21 @@ class EnvironmentTests(unittest.TestCase):
         self.assertEqual(raised.exception.exit_code, 2)
 
 
+class HealthTests(unittest.TestCase):
+    def test_wait_for_health_stops_when_container_exits(self) -> None:
+        settings = load_settings(ROOT)
+        with mock.patch("llm_lab.core.http_json", side_effect=LabError("Connection refused")), \
+                mock.patch("llm_lab.core.docker_container_running", return_value=False), \
+                mock.patch("llm_lab.core.time.sleep") as sleep:
+            with self.assertRaisesRegex(LabError, "terminó antes"):
+                wait_for_health(settings)
+        sleep.assert_not_called()
+
+
 class ProfileTests(unittest.TestCase):
     def test_repository_profiles_are_valid(self) -> None:
         profiles = load_profiles(ROOT)
-        self.assertEqual(set(profiles), {"gemma-4-12b-qat-mtp", "gemma-4-26b-a4b-quality", "qwen-3.6-moe-2bit", "qwen-3.8-27b-iq3xxs-mtp"})
+        self.assertEqual(set(profiles), {"gemma-4-12b-qat-mtp", "gemma-4-26b-a4b-qat-mtp", "qwen-3.6-moe-2bit", "qwen-3.8-27b-iq3xxs-mtp"})
 
     def test_repository_profiles_pin_llama_cpp_for_sm120(self) -> None:
         profiles = load_profiles(ROOT)

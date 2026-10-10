@@ -1,0 +1,26 @@
+[
+  {
+    "pattern": "redundant_read",
+    "tool": "read",
+    "threshold": 1,
+    "reference": "Regla determinista local (lectura idéntica vigente); en el brazo jev, Jev puede vetarla. Sin calibración empírica."
+  },
+  {
+    "pattern": "blind_overwrite",
+    "tool": "write",
+    "threshold": 1,
+    "reference": "Regla determinista local (write sobre archivo existente no leído en la sesión), equivalente a leer-antes-de-escribir de Claude Code. Sin calibración empírica."
+  },
+  {
+    "pattern": "repeated_command",
+    "tool": "bash",
+    "threshold": 1,
+    "reference": "Regla determinista local (tercera ejecución consecutiva de un comando exitoso sin cambios intermedios). Sin calibración empírica."
+  },
+  {
+    "pattern": "repeated_failed_command",
+    "tool": "bash",
+    "threshold": 1,
+    "reference": "Regla determinista local (mismo comando fallido sin cambios intermedios). Sin calibración empírica."
+  }
+]

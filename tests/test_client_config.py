@@ -18,6 +18,7 @@ CLI = ROOT / "bin/llm-lab"
 def invoke(*arguments: str) -> subprocess.CompletedProcess[str]:
     environment = os.environ.copy()
     environment["LLM_LAB_DATA_DIR"] = "/tmp/local-llm-agent-lab-tests"
+    environment["LLM_LAB_DATA_MOUNT"] = ""
     return subprocess.run([str(CLI), *arguments], cwd=ROOT, env=environment, text=True, capture_output=True)
 
 

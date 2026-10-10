@@ -1,0 +1,42 @@
+[
+  {
+    "id": "fix-add",
+    "partition": "calibration",
+    "prompt": "Corrige add en calc.js para sumar los dos argumentos. Conserva los exports existentes. No añadas dependencias. Verifica con node check.cjs y termina cuando pase.",
+    "requirements": [
+      { "id": "R1", "text": "No añadir dependencias." },
+      { "id": "R2", "text": "Conservar el export add y corregir su suma." }
+    ],
+    "files": {
+      "calc.js": "exports.add = (a, b) => a - b;\n",
+      "check.cjs": "const assert = require('node:assert/strict'); const {add} = require('./calc.js'); assert.equal(add(2,3),5); assert.equal(add(-2,2),0);\n"
+    },
+    "verification": "const assert = require('node:assert/strict'); const {add} = require('./calc.js'); for (const [a,b] of [[3,8],[-4,7],[0,0]]) assert.equal(add(a,b),a+b);"
+  },
+  {
+    "id": "create-double",
+    "partition": "evaluation",
+    "prompt": "Crea double.js con el export CommonJS double(n), que devuelve el doble de n. No añadas dependencias. Verifica con node check.cjs.",
+    "requirements": [
+      { "id": "R1", "text": "No añadir dependencias." },
+      { "id": "R2", "text": "Crear double.js con export CommonJS double(n)." }
+    ],
+    "files": {
+      "check.cjs": "const assert = require('node:assert/strict'); const {double} = require('./double.js'); assert.equal(double(4),8); assert.equal(double(-3),-6);\n"
+    },
+    "verification": "const assert = require('node:assert/strict'); const {double} = require('./double.js'); for (const n of [0,7,-9]) assert.equal(double(n),n*2);"
+  },
+  {
+    "id": "inspect-signature",
+    "partition": "evaluation",
+    "prompt": "Lee api.js y crea answer.txt con la firma literal de la función exportada, sin modificar api.js. No añadas dependencias.",
+    "requirements": [
+      { "id": "R1", "text": "No modificar api.js." },
+      { "id": "R2", "text": "answer.txt debe contener la firma greet(name)." }
+    ],
+    "files": {
+      "api.js": "exports.greet = function greet(name) { return 'Hola ' + name; };\n"
+    },
+    "verification": "const assert = require('node:assert/strict'); const fs = require('node:fs'); assert.match(fs.readFileSync('answer.txt','utf8'), /greet\\(name\\)/); assert.equal(fs.readFileSync('api.js','utf8'), \"exports.greet = function greet(name) { return 'Hola ' + name; };\\n\");"
+  }
+]
