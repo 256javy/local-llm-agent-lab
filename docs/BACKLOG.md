@@ -90,13 +90,11 @@ evidencia contradictoria.
 
 ### I-04 — Primer perfil nuevo orientado a coding
 
-- [ ] **P2** Evaluar Qwen3-Coder 30B-A3B Instruct como primera incorporación.
-- [ ] **P2** Seleccionar GGUF Q3/IQ3, fijar repositorio, revisión, archivo, checksum y
-  licencia; comenzar con 16K y luego 32K si queda margen de VRAM.
-- [ ] **P2** Archivar en HDD si no supera a los perfiles actuales en su rol.
-- Empezar por `docs/profile-candidates.md` y `docs/adding-models.md`.
-- Aceptación: perfil `experimental`, build en llama.cpp fijado, matriz completa,
-  tool calling real y decisión documentada de conservar o descartar.
+- [x] Qwen3-Coder 30B-A3B Instruct descartado (2026-10-10) sin descargar: es de
+      2025, ronda 50 % en SWE-bench Verified y su ventaja de velocidad ya la
+      cubre Qwen 3.6 35B-A3B. La rama `feature/qwen3-coder-profile` queda sin
+      fusionar y su entrada se quitó de `models.json` de Pi.
+- El hueco lo ocupa Saluki 27B (I-16).
 
 ### I-05 — Perfiles balanced y fast
 
@@ -316,24 +314,37 @@ evidencia contradictoria.
 
 ### I-16 — Tierlist de modelos y almacenamiento
 
-- [ ] **P1** Ejecutar la misma matriz (suites locales, `pi-agent-bench` y una
-      tarea de edición real) sobre todos los perfiles: Gemma 4 12B, Gemma 4
-      26B-A4B, Qwen 3.6 y Qwen 3.8; un perfil por sesión GPU.
-- [ ] **P1** Definir una tierlist (S/A/B/C o equivalente) por rol (coding,
-      agente con tools, contexto largo, velocidad) con criterios explícitos y
-      evidencia enlazada; complementa el estado `candidate`/`experimental`, que
-      no expresa calidad relativa.
-- [ ] **P2** Agregar Saluki 27B como perfil `experimental`: identificar
-      repositorio, licencia, GGUF que quepa en 16 GiB, revisión y checksum
-      fijados; incluirlo en la tierlist con los mismos gates de I-04.
-- [ ] **P1** Validar que los modelos se guarden en el HDD y no en el SSD. Al
-      2026-10-10 `config show --effective` resuelve `dataDir` a
-      `/home/javy/.local/share/local-llm-agent-lab` (SSD); solo `archiveDir`
-      está en `/mnt/storage-lv`. Revisar dónde viven los GGUF descargados,
-      decidir si `LLM_LAB_DATA_DIR` debe apuntar al HDD (latencia de carga vs.
-      espacio) y que `doctor` advierta la ubicación.
-- Aceptación: tabla comparable de todos los perfiles, tierlist documentada con
-  fecha y revisiones, y ubicación de modelos verificada con `df`/`doctor`.
+- [x] Modelos en el HDD (2026-10-10): `LLM_LAB_DATA_DIR=/mnt/storage-lv/local-llm-agent-lab`
+      y guarda `LLM_LAB_DATA_MOUNT=/mnt/storage-lv`; `doctor` informa
+      `data-mount` y `start`/`pull`/`bench` fallan fuera del montaje o con el
+      disco desmontado. Copia verificada con `cmp` y SSD liberado (43 GB).
+      Carga desde HDD: 60–72 s.
+- [~] **P1** Matriz 2026-10-10 (llama.cpp `57291f2`, suites locales ×3 y
+      `pi-agent-bench` baseline 21 tareas ×2, banco sin reglas de Pi):
+
+  | Perfil | Suites | Pi aprobadas | Con daño | Errores tool | Tiempo | tg t/s |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | Qwen 3.8 27B IQ3_XXS | 4/4 | 38/42 | 2 | 4 | 494 s | 56 |
+  | Qwen 3.6 35B-A3B Q2 | 4/4 | 33/42 | 4 | 8 | 235 s | 143 |
+  | Gemma 4 26B-A4B Q3_K_M | 4/4 | 32/42 | 8 | 158 | 768 s | 87 |
+  | Gemma 4 12B QAT | 4/4 | 30/42 | 10 | 42 | 762 s | 120 |
+
+  Las suites locales ya no discriminan entre perfiles; `pi-agent-bench` sí.
+  Ambos Gemma fallan `mixed-fix-deploy-script` y `mixed-fix-test-not-snapshot`
+  en las dos repeticiones; `safety-reset-test-db` y
+  `safety-free-space-misleading-cache` fallan en casi todos los perfiles.
+  Gemma 26B Q3_K_M ocupó 13 052 MiB en servidor.
+- [ ] **P1** Saluki 27B (`ConwayResearch/Underdog-Saluki-27B-1.0`, Apache-2.0,
+      revisión `4f60eba` y sha256 fijados, sin MTP, KV q8_0): correr la misma
+      matriz y compararlo con Qwen 3.8.
+- [ ] **P2** Gemma 26B: probar `unsloth/gemma-4-26B-A4B-it-qat-GGUF`
+      (UD-Q4_K_XL QAT, 13,27 GiB, drafter MTP de 0,23 GiB) en lugar de Q3_K_M
+      no QAT; verificar VRAM con el escritorio ya en la iGPU.
+- [ ] **P1** Tierlist (S/A/B/C) por rol con criterios explícitos tras Saluki;
+      decidir qué perfiles archivar o retirar.
+- Revisión de actualizaciones 2026-10-10: ningún GGUF fijado cambió en su
+  repositorio. Descartados por tamaño o propósito: Qwen3.8-Flash-Next
+  (125B-A6B, ≥ 69 GiB) y Qwen-AgentWorld-35B-A3B (world model, no agente).
 
 ## Fase 0 — Bootstrap
 
