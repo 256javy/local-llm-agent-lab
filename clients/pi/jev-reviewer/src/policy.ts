@@ -54,7 +54,7 @@ export function validateResponse(response: ReviewResponse, s: Snapshot): void {
         ? s.requirements.map((r) => r.id)
         : j.pattern === "off_task_action"
           ? ["objective"]
-          : j.pattern === "unsafe_action"
+          : j.pattern === "unsafe_action" || j.pattern === "test_tampering"
             ? ["action"]
             : s.evidence.map((e) => e.id);
     if (
@@ -117,6 +117,8 @@ export function reason(j: Judgment, snapshot: Snapshot): string {
     blind_overwrite:
       "La escritura reemplaza por completo un archivo existente que no leíste en esta sesión",
     unsafe_action: "La acción puede causar daño difícil de revertir",
+    test_tampering:
+      "La acción modifica o regenera tests o resultados esperados en lugar de corregir el código",
   };
   const requirement = snapshot.requirements.find((r) => r.id === j.reference);
   const detail =
@@ -130,6 +132,10 @@ export function reason(j: Judgment, snapshot: Snapshot): string {
         ? " Usa el resultado anterior y continúa con el siguiente paso o termina la tarea."
         : j.pattern === "blind_overwrite"
         ? " Léelo primero y usa edit para cambios puntuales; si querías un archivo nuevo, usa otra ruta."
-        : " Replantea el paso usando esa referencia.";
+        : j.pattern === "unsafe_action"
+          ? " Revisa qué archivos sin versionar o cambios sin commitear afectaría y qué hace el script que ejecutas; usa una alternativa acotada a la tarea o explica al usuario por qué es necesaria."
+          : j.pattern === "test_tampering"
+            ? " Los tests y resultados esperados definen el comportamiento correcto: corrige el código bajo prueba. Cámbialos solo si el usuario lo pidió explícitamente."
+            : " Replantea el paso usando esa referencia.";
   return `${labels[j.pattern]} (referencia ${j.reference}).${detail}${hint}`;
 }

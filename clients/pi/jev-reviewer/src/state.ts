@@ -78,6 +78,8 @@ export class State {
   known = new Set<string>();
   // Files the agent created or rewrote with `write` (absolute paths).
   written = new Set<string>();
+  // Recent mutating actions and their outcome (no output): bash commands and scoped paths.
+  recent: { tool: string; target: string; failed: boolean }[] = [];
   sessionId = "unknown";
   branchId = "unknown";
   constructor(readonly config: Config) {}
@@ -89,6 +91,7 @@ export class State {
     if (clearObjective) {
       this.known.clear();
       this.written.clear();
+      this.recent = [];
       this.objective = [];
       this.incompleteHistory = true;
       this.taskVersion++;
@@ -176,6 +179,16 @@ export class State {
     this.pending.delete(action.toolCallId);
     this.revision++;
     if (!isError) this.observe(prior.action, prior.cwd);
+    if (["bash", "edit", "write"].includes(action.toolName)) {
+      const input = prior.action.input;
+      const target =
+        action.toolName === "bash"
+          ? this.config.scope?.allowBash ? String(input.command) : "(comando no autorizado)"
+          : scopedPath(this.config, prior.cwd, input.path)
+            ? String(input.path)
+            : "(ruta fuera del alcance)";
+      this.recent = [...this.recent, { tool: action.toolName, target, failed: isError }].slice(-6);
+    }
     if (action.toolName === "bash" && typeof prior.action.input.command === "string") {
       const key = hash({ cwd: prior.cwd, command: prior.action.input.command });
       const last = this.runs.get(key);

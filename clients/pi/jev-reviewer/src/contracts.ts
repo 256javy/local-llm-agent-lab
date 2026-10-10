@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { SafetyFinding } from "./safety.ts";
+import type { ActionContext } from "./context.ts";
 
 export const patterns = [
   "redundant_read",
@@ -10,6 +11,7 @@ export const patterns = [
   "repeated_command",
   "blind_overwrite",
   "unsafe_action",
+  "test_tampering",
 ] as const;
 export type Pattern = (typeof patterns)[number];
 export type Mode = "off" | "observe" | "enforce";
@@ -45,6 +47,8 @@ export interface Snapshot {
   evidence: Evidence[];
   pending: string[];
   omissions: string[];
+  // Local blast-radius facts for safety and quality questions (jev arm only).
+  context?: ActionContext;
 }
 export interface Judgment {
   pattern: Pattern;

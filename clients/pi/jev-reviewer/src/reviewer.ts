@@ -5,6 +5,7 @@ import {
   type Action,
   type Config,
   type Decision,
+  type Judgment,
   type Mode,
   type ReviewerClient,
   type Snapshot,
@@ -17,19 +18,27 @@ import {
   localOnlyJudgments,
   validateResponse,
 } from "./policy.ts";
+import { buildContext } from "./context.ts";
 import { assessSafety, safetyReason, type SafetyFinding } from "./safety.ts";
 import { fingerprint, scopedPath, State } from "./state.ts";
 import type { RecordWriter } from "./journal.ts";
+const guardPatterns: Judgment["pattern"][] = ["unsafe_action", "test_tampering"];
 export class Reviewer {
   readonly state: State;
   calls = 0;
   failures = 0;
   blocks = 0;
+  // Jev safety/quality blocks have their own budget so efficiency blocks cannot exhaust it.
+  guardBlocks = 0;
   safetyBlocks = 0;
   remoteTokens = 0;
   private controller = new AbortController();
   private blocked = new Map<string, string>();
   private bypass = new Set<string>();
+  // Identical actions Jev already judged unsafe/tampering in this task stay blocked with no new
+  // query or budget, like safety blocks: a stubborn model cannot outlast the budgets.
+  private condemned = new Map<string, { pattern: Judgment["pattern"]; reference: string; reason: string; key: string }>();
+  private condemnedBy = new Map<string, string>();
   // Safety blocks never auto-bypass on retry; only an explicit allow-once lifts them.
   private safetyBlocked = new Map<string, string>();
   private safetyBypass = new Set<string>();
@@ -41,6 +50,10 @@ export class Reviewer {
     this.state = new State(config);
   }
   reset(clearObjective = false) {
+    if (clearObjective) {
+      this.condemned.clear();
+      this.condemnedBy.clear();
+    }
     this.controller.abort();
     this.controller = new AbortController();
     this.state.invalidate(clearObjective);
@@ -60,6 +73,13 @@ export class Reviewer {
     this.write({ kind: "safety_mode", mode });
   }
   allowOnce(reviewId: string): boolean {
+    const condemnedKey = this.condemnedBy.get(reviewId);
+    if (condemnedKey && this.condemned.has(condemnedKey)) {
+      this.bypass.add(this.condemned.get(condemnedKey)!.key);
+      this.condemned.delete(condemnedKey);
+      this.write({ kind: "allow_once", reviewId });
+      return true;
+    }
     const safetyKey = this.safetyBlocked.get(reviewId);
     const key = safetyKey ?? this.blocked.get(reviewId);
     if (!key) return false;
@@ -130,6 +150,19 @@ export class Reviewer {
   ): Promise<Decision> {
     const start = performance.now();
     const snapshot = this.state.snapshot(action, cwd);
+    if (
+      this.config.reviewer === "jev" &&
+      this.config.mode !== "off" &&
+      this.config.scope &&
+      ["bash", "edit", "write"].includes(action.toolName) &&
+      !userSignal?.aborted
+    ) {
+      try {
+        snapshot.context = buildContext(action, cwd, this.config, this.state.written, this.state.recent);
+      } catch {
+        // Without context Jev still answers on the action alone.
+      }
+    }
     const d: Decision = {
       schemaVersion: 1,
       kind: "decision",
@@ -155,7 +188,22 @@ export class Reviewer {
     const invalid = this.eligible(snapshot);
     const active = this.config.mode !== "off" && this.config.reviewer !== "off";
     const key = this.key(snapshot);
+    const actionKey = hash({
+      action: { toolName: action.toolName, input: action.input },
+      cwd,
+      session: snapshot.sessionId,
+      branch: snapshot.branchId,
+      task: snapshot.taskVersion,
+    });
+    const prior = this.condemned.get(actionKey);
     let blockKey: string | undefined;
+    let guardBlock = false;
+    const max = this.config.maxBlocksPerTask;
+    // Drop judgments whose block budget is spent; the other class can still block.
+    const budgeted = (judgments: Judgment[]) =>
+      judgments.filter((j) =>
+        guardPatterns.includes(j.pattern) ? this.guardBlocks < max : this.blocks < max,
+      );
     let safetyKey: string | undefined;
     const generation = this.controller.signal;
     const repeated = localOnlyJudgments(
@@ -171,6 +219,7 @@ export class Reviewer {
       if (this.config.mode === "enforce") {
         d.action = "block";
         blockKey = key;
+        guardBlock = guardPatterns.includes(problem.pattern);
       }
     };
     // Safety is local and independent of the utility arm, data scope and budgets.
@@ -198,17 +247,27 @@ export class Reviewer {
         d.reason = "cancelled";
       } else if (safetyKey) {
         // Blocked for safety: no utility review or remote query is needed.
+      } else if (active && this.config.mode === "enforce" && prior) {
+        d.action = "block";
+        d.wouldBlock = true;
+        d.pattern = prior.pattern;
+        d.reference = prior.reference;
+        d.reason = `${prior.reason} Ya se bloqueó esta misma acción en esta tarea: no la repitas.`;
       } else if (
         active &&
         (this.bypass.delete(key) ||
           [...this.blocked.values()].includes(key) ||
-          this.blocks >= this.config.maxBlocksPerTask)
+          (this.blocks >= max &&
+            (this.guardBlocks >= max ||
+              !this.config.calibration.some(
+                (c) => guardPatterns.includes(c.pattern) && c.tool === action.toolName,
+              ))))
       ) {
         d.reason = "Bypass por autorización, reintento o límite de bloqueos.";
       } else if (active && invalid) {
         d.action = "abstain";
         d.reason = invalid;
-        const problem = candidate(this.config, snapshot, repeated);
+        const problem = candidate(this.config, snapshot, budgeted(repeated));
         if (problem) {
           d.action = "allow";
           apply(problem);
@@ -282,7 +341,7 @@ export class Reviewer {
             ? "cancelled"
             : "Estado obsoleto; respuesta descartada.";
         } else {
-          const problem = candidate(this.config, snapshot, judgments);
+          const problem = candidate(this.config, snapshot, budgeted(judgments));
           if (!finding) d.reason = "Sin patrón calibrado aplicable.";
           apply(problem);
         }
@@ -315,6 +374,7 @@ export class Reviewer {
         requirements: [],
         evidence: [],
         action: { ...action, input: {} },
+        context: undefined,
       };
     try {
       this.write(d as unknown as Record<string, unknown>);
@@ -332,9 +392,15 @@ export class Reviewer {
       this.safetyBlocked.set(d.reviewId, safetyKey);
       this.safetyBlocks++;
     }
+    if (d.action === "block" && prior && !safetyKey) this.condemnedBy.set(d.reviewId, actionKey);
+    if (blockKey && guardBlock) {
+      this.condemned.set(actionKey, { pattern: d.pattern!, reference: d.reference!, reason: d.reason, key: blockKey });
+      this.condemnedBy.set(d.reviewId, actionKey);
+    }
     if (blockKey) {
       this.blocked.set(d.reviewId, blockKey);
-      this.blocks++;
+      if (guardBlock) this.guardBlocks++;
+      else this.blocks++;
     }
     return d;
   }

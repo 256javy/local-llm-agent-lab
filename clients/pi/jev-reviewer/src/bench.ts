@@ -9,12 +9,13 @@ import {
   writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { defaults, validateConfig } from "./config.ts";
 import { readRecords, report } from "./report.ts";
-import type { Arm, Calibration, Config, Mode, Requirement } from "./contracts.ts";
+import type { Arm, Calibration, Config, Mode } from "./contracts.ts";
+import { damageCheck, loadTasks, prepare, verify } from "./bench-tasks.ts";
 
 // Runs pi-agent-bench tasks through Pi with each reviewer variant, inside bubblewrap.
 const { values } = parseArgs({
@@ -56,25 +57,8 @@ const policyPath =
   values.policy ?? fileURLToPath(new URL("../policies/deterministic.json", import.meta.url));
 const policy = JSON.parse(readFileSync(policyPath, "utf8")) as Calibration[];
 
-interface Task {
-  id: string;
-  category: string;
-  prompt: string;
-  requirements: Requirement[];
-  git?: boolean;
-  uncommitted?: Record<string, string>;
-  expectedMaxToolCalls?: number;
-  scopePaths: string[];
-}
 const benchRoot = resolve(values.bench!);
-const only = values.tasks?.split(",");
-const tasks: (Task & { dir: string })[] = readdirSync(join(benchRoot, "tasks"))
-  .sort()
-  .filter((id) => !only || only.includes(id))
-  .map((id) => {
-    const dir = join(benchRoot, "tasks", id);
-    return { ...(JSON.parse(readFileSync(join(dir, "task.json"), "utf8")) as Task), dir };
-  });
+const tasks = loadTasks(benchRoot, values.tasks?.split(","));
 const benchCommit = spawnSync("git", ["-C", benchRoot, "rev-parse", "HEAD"], { encoding: "utf8" }).stdout.trim();
 
 const output = resolve(values.output ?? defaults.storageRoot);
@@ -117,23 +101,6 @@ writeFileSync(
   { mode: 0o600 },
 );
 
-function git(cwd: string, ...args: string[]) {
-  const r = spawnSync("git", args, { cwd, encoding: "utf8" });
-  if (r.status !== 0) throw new Error(`git ${args.join(" ")}: ${r.stderr}`);
-}
-function prepare(task: Task & { dir: string }, root: string) {
-  // cpSync preserves file modes, which the permissions task depends on.
-  cpSync(join(task.dir, "workspace"), root, { recursive: true });
-  if (task.git) {
-    git(root, "init", "-q", "-b", "main");
-    git(root, "-c", "user.name=bench", "-c", "user.email=bench@example.invalid", "add", "-A");
-    git(root, "-c", "user.name=bench", "-c", "user.email=bench@example.invalid", "commit", "-q", "-m", "inicial");
-  }
-  for (const [rel, text] of Object.entries(task.uncommitted ?? {})) {
-    mkdirSync(dirname(join(root, rel)), { recursive: true });
-    writeFileSync(join(root, rel), text);
-  }
-}
 function sessionMetrics(path: string) {
   let toolCalls = 0;
   let toolErrors = 0;
@@ -228,21 +195,7 @@ for (let repeat = 0; repeat < repetitions; repeat++) {
       const elapsedMs = performance.now() - begin;
       writeFileSync(join(run, name, "pi.jsonl"), child.stdout ?? "", { mode: 0o600 });
       writeFileSync(join(run, name, "stderr.txt"), child.stderr ?? "", { mode: 0o600 });
-      // verify.cjs reads its originals from its own directory: run it in place, outside the sandbox.
-      const check = spawnSync(process.execPath, [join(task.dir, "verify.cjs"), root], {
-        cwd: task.dir,
-        encoding: "utf8",
-        timeout: 20000,
-      });
-      let verify: { pass: boolean; checks: { name: string; ok: boolean; detail: string }[] } = {
-        pass: false,
-        checks: [],
-      };
-      try {
-        verify = JSON.parse(check.stdout.trim().split("\n").at(-1) ?? "");
-      } catch {
-        verify.checks.push({ name: "verify", ok: false, detail: check.stderr.slice(-300) });
-      }
+      const verified = verify(task, root);
       const events = readdirSync(join(run, name, "reviews"), { recursive: true })
         .map(String)
         .filter((p) => p.endsWith("events.jsonl"))
@@ -253,8 +206,8 @@ for (let repeat = 0; repeat < repetitions; repeat++) {
         category: task.category,
         variant,
         repeat,
-        outcome: verify.pass ? "pass" : "fail",
-        failedChecks: verify.checks.filter((c) => !c.ok).map((c) => `${c.name}: ${c.detail}`),
+        outcome: verified.pass ? "pass" : "fail",
+        failedChecks: verified.checks.filter((c) => !c.ok).map((c) => `${c.name}: ${c.detail}`),
         processExit: child.status,
         timedOut: child.error ? String(child.error) : undefined,
         elapsedMs: Math.round(elapsedMs),
@@ -283,7 +236,7 @@ const summary = selected.map((variant) => {
   const rs = rows.filter((r) => r.variant === variant);
   const sum = (k: string) => rs.reduce((a, r) => a + Number(r[k] ?? 0), 0);
   const damaged = rs.filter((r) =>
-    (r.failedChecks as string[]).some((c) => /intact|conservad|presente|no se ejecut|no borr|no modific|sin /i.test(c)),
+    (r.failedChecks as string[]).some((c) => damageCheck.test(c)),
   ).length;
   return {
     variant,

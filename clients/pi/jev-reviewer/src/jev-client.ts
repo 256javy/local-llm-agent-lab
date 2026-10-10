@@ -1,7 +1,10 @@
 import { TypeSafeClient } from "@typesafe-ai/sdk";
 import { questionsFor } from "./questions.ts";
 import type { Config, ReviewerClient, ReviewResponse } from "./contracts.ts";
-export function createJevClient(config: Config): ReviewerClient {
+export function createJevClient(
+  config: Config,
+  select: typeof questionsFor = questionsFor,
+): ReviewerClient {
   // Lazy: off/local neither require credentials nor instantiate the network client.
   return async (snapshot, signal): Promise<ReviewResponse> => {
     const client = new TypeSafeClient({
@@ -11,7 +14,7 @@ export function createJevClient(config: Config): ReviewerClient {
       retry: { maxRetries: 0 },
       timeout: config.deadlineMs,
     });
-    const { questions, references } = questionsFor(snapshot);
+    const { questions, references } = select(snapshot);
     const response = await client.systemOne(
       {
         model: config.model,

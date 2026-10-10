@@ -272,7 +272,7 @@ export default function extension(pi: ExtensionAPI) {
         }
         notice(
           ctx,
-          `Jev: ${reviewer.config.mode}; brazo ${reviewer.config.reviewer}; seguridad ${reviewer.config.safety}; consultas ${reviewer.calls}; bloqueos ${reviewer.blocks}; bloqueos de seguridad ${reviewer.safetyBlocks}; fallos consecutivos ${reviewer.failures}.`,
+          `Jev: ${reviewer.config.mode}; brazo ${reviewer.config.reviewer}; seguridad ${reviewer.config.safety}; consultas ${reviewer.calls}; bloqueos ${reviewer.blocks}; bloqueos de seguridad/calidad de Jev ${reviewer.guardBlocks}; bloqueos de la guardia ${reviewer.safetyBlocks}; fallos consecutivos ${reviewer.failures}.`,
         );
       } catch {
         notice(ctx, "No se pudo registrar el cambio del revisor.");
