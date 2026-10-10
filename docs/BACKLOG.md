@@ -314,6 +314,27 @@ evidencia contradictoria.
 - Observación: Qwen 3.6 Q2 copia mal rutas largas (UUID) y escribe archivos en
   directorios inexistentes; preferir Qwen 3.8 o Gemma para edición.
 
+### I-16 — Tierlist de modelos y almacenamiento
+
+- [ ] **P1** Ejecutar la misma matriz (suites locales, `pi-agent-bench` y una
+      tarea de edición real) sobre todos los perfiles: Gemma 4 12B, Gemma 4
+      26B-A4B, Qwen 3.6 y Qwen 3.8; un perfil por sesión GPU.
+- [ ] **P1** Definir una tierlist (S/A/B/C o equivalente) por rol (coding,
+      agente con tools, contexto largo, velocidad) con criterios explícitos y
+      evidencia enlazada; complementa el estado `candidate`/`experimental`, que
+      no expresa calidad relativa.
+- [ ] **P2** Agregar Saluki 27B como perfil `experimental`: identificar
+      repositorio, licencia, GGUF que quepa en 16 GiB, revisión y checksum
+      fijados; incluirlo en la tierlist con los mismos gates de I-04.
+- [ ] **P1** Validar que los modelos se guarden en el HDD y no en el SSD. Al
+      2026-10-10 `config show --effective` resuelve `dataDir` a
+      `/home/javy/.local/share/local-llm-agent-lab` (SSD); solo `archiveDir`
+      está en `/mnt/storage-lv`. Revisar dónde viven los GGUF descargados,
+      decidir si `LLM_LAB_DATA_DIR` debe apuntar al HDD (latencia de carga vs.
+      espacio) y que `doctor` advierta la ubicación.
+- Aceptación: tabla comparable de todos los perfiles, tierlist documentada con
+  fecha y revisiones, y ubicación de modelos verificada con `df`/`doctor`.
+
 ## Fase 0 — Bootstrap
 
 - [x] Crear repositorio y documentar el alcance inicial.
