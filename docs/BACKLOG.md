@@ -92,8 +92,10 @@ evidencia contradictoria.
 
 - [x] Qwen3-Coder 30B-A3B Instruct descartado (2026-10-10) sin descargar: es de
       2025, ronda 50 % en SWE-bench Verified y su ventaja de velocidad ya la
-      cubre Qwen 3.6 35B-A3B. La rama `feature/qwen3-coder-profile` queda sin
-      fusionar y su entrada se quitó de `models.json` de Pi.
+      cubre Qwen 3.6 35B-A3B. Se quitó de `models.json` de Pi y se eliminó la
+      rama `feature/qwen3-coder-profile`; de ella solo se conservó el backup
+      con hora de `client-config` (los `contextSize` de Qwen 3.8 eran la
+      deriva corregida en I-15).
 - El hueco lo ocupa Saluki 27B (I-16).
 
 ### I-05 — Perfiles balanced y fast
@@ -337,9 +339,10 @@ evidencia contradictoria.
 - [ ] **P1** Saluki 27B (`ConwayResearch/Underdog-Saluki-27B-1.0`, Apache-2.0,
       revisión `4f60eba` y sha256 fijados, sin MTP, KV q8_0): correr la misma
       matriz y compararlo con Qwen 3.8.
-- [ ] **P2** Gemma 26B: probar `unsloth/gemma-4-26B-A4B-it-qat-GGUF`
-      (UD-Q4_K_XL QAT, 13,27 GiB, drafter MTP de 0,23 GiB) en lugar de Q3_K_M
-      no QAT; verificar VRAM con el escritorio ya en la iGPU.
+- [ ] **P1** Gemma 26B: el perfil `gemma-4-26b-a4b-quality` (Q3_K_M no QAT)
+      se reemplazó por `gemma-4-26b-a4b-qat-mtp` (UD-Q4_K_XL QAT, 13,27 GiB,
+      drafter MTP 0,23 GiB, revisión `7b92b5b` y sha256 fijados). Correr la
+      matriz y verificar VRAM con el escritorio en la iGPU.
 - [ ] **P1** Tierlist (S/A/B/C) por rol con criterios explícitos tras Saluki;
       decidir qué perfiles archivar o retirar.
 - Revisión de actualizaciones 2026-10-10: ningún GGUF fijado cambió en su
