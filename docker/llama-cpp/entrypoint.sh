@@ -57,6 +57,13 @@ if [[ -n "${LLM_LAB_API_KEY:-}" ]]; then
   args+=(--api-key "${LLM_LAB_API_KEY}")
 fi
 
+template_file="$(jq -r '.chatTemplate.file // ""' "${profile_file}")"
+if [[ -n "${template_file}" ]]; then
+  template_path="/opt/llm-lab/templates/${template_file}"
+  [[ -r "${template_path}" ]] || { echo "ERROR: plantilla no legible: ${template_path}" >&2; exit 2; }
+  args+=(--chat-template-file "${template_path}")
+fi
+
 while IFS= read -r arg; do args+=("${arg}"); done < <(jq -r '.server.arguments[]' "${profile_file}")
 
 exec llama-server "${args[@]}"

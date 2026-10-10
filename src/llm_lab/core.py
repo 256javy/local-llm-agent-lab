@@ -125,6 +125,10 @@ def profile_files(repo_dir: pathlib.Path) -> list[pathlib.Path]:
     return sorted((repo_dir / "config/profiles").glob("*.json"))
 
 
+def is_template_name(value: Any) -> bool:
+    return isinstance(value, str) and value.endswith(".jinja") and value == pathlib.PurePath(value).name and not value.startswith(".")
+
+
 def validate_profile(profile: dict[str, Any], source: str = "perfil") -> list[str]:
     errors: list[str] = []
     required = {"id", "displayName", "runtime", "model", "server", "requirements", "capabilities", "status"}
@@ -161,8 +165,10 @@ def validate_profile(profile: dict[str, Any], source: str = "perfil") -> list[st
     chat_template = profile.get("chatTemplate")
     if chat_template is not None:
         toggle = chat_template.get("thinkingToggleKwarg") if isinstance(chat_template, dict) else None
-        if not isinstance(chat_template, dict) or set(chat_template) - {"thinkingToggleKwarg"} or (toggle is not None and (not isinstance(toggle, str) or not toggle)):
+        if not isinstance(chat_template, dict) or set(chat_template) - {"thinkingToggleKwarg", "file"} or (toggle is not None and (not isinstance(toggle, str) or not toggle)):
             errors.append(f"{source}: chatTemplate inválido")
+        elif "file" in chat_template and not is_template_name(chat_template["file"]):
+            errors.append(f"{source}: chatTemplate.file debe ser un nombre .jinja dentro de config/templates")
     return errors
 
 
@@ -176,6 +182,9 @@ def load_profiles(repo_dir: pathlib.Path) -> dict[str, dict[str, Any]]:
             errors.append(f"{path}: {exc}")
             continue
         errors.extend(validate_profile(profile, str(path)))
+        template = profile.get("chatTemplate", {}).get("file") if isinstance(profile.get("chatTemplate"), dict) else None
+        if is_template_name(template) and not (repo_dir / "config/templates" / template).is_file():
+            errors.append(f"{path}: plantilla inexistente: config/templates/{template}")
         profile_id = profile.get("id")
         if profile_id in profiles:
             errors.append(f"ID de perfil duplicado: {profile_id}")

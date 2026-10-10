@@ -350,11 +350,24 @@ evidencia contradictoria.
       `path` repetidas en bucle; Gemma 12B muestra el mismo patrón (10 `edit`
       sin `path` y claves con comillas). `context` falla en 16K por copiar mal
       la clave (`MANDUARÍA` por `MANDUARÁ`, 3/3), no por memoria.
-- [ ] **P1** Gemma como agente: aislar si los `edit` sin `path` vienen del
-      modelo o del parser de tool calls de llama.cpp para Gemma 4 (comparar la
-      salida cruda del modelo con el `tool_calls` que devuelve el servidor) y
-      medir Gemma 12B y 26B QAT con la variante `local` (guardia de bucles).
-- [ ] **P1** Probar LiteRT-LM como backend de Gemma 4: confirmar soporte en
+- [~] **P1** Gemma como agente: `edit` sin `path` (2026-10-10, 26B QAT).
+  - Causa: el modelo, no el parser. La salida cruda (`/apply-template` +
+    `/completion`) ya trae `edits:[{…,path:…}]`; llama.cpp la traduce fiel.
+    La plantilla del GGUF ordena propiedades y argumentos con `dictsort`
+    (`edits` antes que `path`) y el modelo cierra mal el array anidado.
+  - Misma petición, 20 muestras: orden alfabético 10/20 malformadas; `path`
+    primero (plantilla `config/templates/gemma-4-ordered-args.jinja`,
+    `chatTemplate.file`) 0/20. El bucle de 132 errores era una sola ejecución
+    copiando su propia llamada inválida.
+  - Pendiente: repetir la matriz `pi-agent-bench` con la plantilla en 26B,
+    verificar que la plantilla del 12B sea idéntica y aplicarla; medir la
+    variante `local`. Evidencia local en `.local/gemma-tool-call-2026-10-10/`.
+- [ ] **P1** Probar LiteRT-LM como backend de Gemma 4 (investigación
+      2026-10-10, v0.18.0, Apache-2.0: Linux usa WebGPU/Dawn sobre Vulkan, no
+      CUDA; `litert-lm serve` OpenAI-compatible con tools, sin reutilizar KV
+      entre requests ni separar razonamiento; 26B-A4B solo en 15,8 GB, no entra
+      en 16 GB a 32K; FP16 da basura en Blackwell, issue #2992; viable solo
+      12B en FP32 como comparación). Original: confirmar soporte en
       Linux con GPU NVIDIA (o el fallback real), modelos `.litertlm`
       disponibles, licencia, API compatible con OpenAI y tool calling. Si es
       viable, adaptador declarativo `litert-lm` en Docker y misma matriz que
