@@ -28,7 +28,7 @@ arquitectura, operación, validación y extensiones pendientes.
 cp .env.example .env
 ./bin/llm-lab doctor
 ./bin/llm-lab profiles
-./bin/llm-lab start gemma-4-12b-qat-mtp
+./bin/llm-lab start qwen-3.8-27b-iq3xxs-mtp
 ./bin/llm-lab health
 ```
 

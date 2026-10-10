@@ -18,7 +18,7 @@ ese target. No copies `120` solo por tener 16 GB de VRAM.
 ## Ciclo de vida
 
 ```bash
-./bin/llm-lab start gemma-4-12b-qat-mtp
+./bin/llm-lab start qwen-3.8-27b-iq3xxs-mtp
 ./bin/llm-lab status
 ./bin/llm-lab health
 ./bin/llm-lab switch qwen-3.6-moe-2bit

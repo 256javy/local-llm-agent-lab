@@ -350,11 +350,19 @@ evidencia contradictoria.
       `path` repetidas en bucle; Gemma 12B muestra el mismo patrón (10 `edit`
       sin `path` y claves con comillas). `context` falla en 16K por copiar mal
       la clave (`MANDUARÍA` por `MANDUARÁ`, 3/3), no por memoria.
-- [ ] **P2** Investigar si los `edit` sin `path` de Gemma vienen del parser de
-      tool calls de llama.cpp para Gemma 4 o del modelo; medir Gemma con la
-      variante `local` (guardia de bucles) antes de descartarlo como agente.
-- [ ] **P1** Tierlist (S/A/B/C) por rol con criterios explícitos tras Saluki;
-      decidir qué perfiles archivar o retirar.
+- [ ] **P1** Gemma como agente: aislar si los `edit` sin `path` vienen del
+      modelo o del parser de tool calls de llama.cpp para Gemma 4 (comparar la
+      salida cruda del modelo con el `tool_calls` que devuelve el servidor) y
+      medir Gemma 12B y 26B QAT con la variante `local` (guardia de bucles).
+- [ ] **P1** Probar LiteRT-LM como backend de Gemma 4: confirmar soporte en
+      Linux con GPU NVIDIA (o el fallback real), modelos `.litertlm`
+      disponibles, licencia, API compatible con OpenAI y tool calling. Si es
+      viable, adaptador declarativo `litert-lm` en Docker y misma matriz que
+      llama.cpp sobre el mismo modelo; si no, documentar el bloqueo. Sustituye
+      a los items P3 de LiteRT-LM de las fases 4 y 5.
+- [x] Tierlist y retiros en [ADR 0003](decisions/0003-model-tierlist-2026-10.md):
+      Qwen 3.8 (S, perfil por defecto desde 2026-10-10), Qwen 3.6 (A, rápido),
+      Gemma 12B/26B QAT (C como agente, en investigación); Saluki retirado.
 - Revisión de actualizaciones 2026-10-10: ningún GGUF fijado cambió en su
   repositorio. Descartados por tamaño o propósito: Qwen3.8-Flash-Next
   (125B-A6B, ≥ 69 GiB) y Qwen-AgentWorld-35B-A3B (world model, no agente).
@@ -410,14 +418,15 @@ evidencia contradictoria.
 - [ ] **P3** Ejecutar SWE-bench Mini/Verified con un agente fijado y separar el score
       del modelo del score del sistema completo.
 - [~] **P1** Fixture agentic de tool calling validado; falta Pi end-to-end.
-- [ ] **P3** Comparar llama.cpp, Ollama y LiteRT-LM con condiciones equivalentes.
+- [ ] **P3** Comparar llama.cpp, Ollama y LiteRT-LM con condiciones equivalentes
+      (LiteRT-LM adelantado a I-16).
 
 ## Fase 5 — Catálogo
 
 - [x] Perfil experimental Gemma 4 26B-A4B.
 - [ ] **P3** Revaluar después de I-04/I-05 si Gemma 4 v2 Q6_K aporta un rol distinto
       antes de crear otro perfil Gemma; no depende de la TUI.
-- [ ] **P3** Adaptador LiteRT-LM.
+- [ ] **P1** Adaptador LiteRT-LM: ver I-16.
 - [ ] **P2** Canales stable/candidate/experimental.
 - [~] **P2** Reporte explícito de almacenamiento; limpieza diferida por seguridad.
 - [x] Archivo frío configurable por perfil con restauración explícita.

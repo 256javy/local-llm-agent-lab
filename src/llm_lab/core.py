@@ -96,7 +96,7 @@ def load_settings(repo_dir: pathlib.Path) -> Settings:
         data_dir=data_dir.resolve(),
         archive_dir=archive_dir,
         cuda_architectures=value("LLM_LAB_CUDA_ARCHITECTURES", ""),
-        default_profile=value("LLM_LAB_DEFAULT_PROFILE", "gemma-4-12b-qat-mtp"),
+        default_profile=value("LLM_LAB_DEFAULT_PROFILE", "qwen-3.8-27b-iq3xxs-mtp"),
         api_key=value("LLM_LAB_API_KEY", ""),
         start_timeout=start_timeout,
         stop_timeout=stop_timeout,
