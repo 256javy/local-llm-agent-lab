@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from llm_lab.core import LabError, compose_env, data_mount_problem, require_data_mount, docker_project_running, http_json, load_profiles, load_settings, parse_env_file, port_available, validate_profile
+from llm_lab.core import LabError, wait_for_health, compose_env, data_mount_problem, require_data_mount, docker_project_running, http_json, load_profiles, load_settings, parse_env_file, port_available, validate_profile
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -64,6 +64,17 @@ class EnvironmentTests(unittest.TestCase):
             with self.assertRaises(LabError) as raised:
                 load_settings(ROOT)
         self.assertEqual(raised.exception.exit_code, 2)
+
+
+class HealthTests(unittest.TestCase):
+    def test_wait_for_health_stops_when_container_exits(self) -> None:
+        settings = load_settings(ROOT)
+        with mock.patch("llm_lab.core.http_json", side_effect=LabError("Connection refused")), \
+                mock.patch("llm_lab.core.docker_container_running", return_value=False), \
+                mock.patch("llm_lab.core.time.sleep") as sleep:
+            with self.assertRaisesRegex(LabError, "terminó antes"):
+                wait_for_health(settings)
+        sleep.assert_not_called()
 
 
 class ProfileTests(unittest.TestCase):

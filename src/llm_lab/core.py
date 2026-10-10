@@ -317,6 +317,11 @@ def wait_for_health(settings: Settings) -> dict[str, Any]:
             last_error = f"HTTP {code}: {payload}"
         except LabError as exc:
             last_error = str(exc)
+            # Un contenedor que terminó no va a responder; no esperar el timeout completo.
+            if not docker_container_running():
+                raise LabError(
+                    f"El servidor terminó antes de quedar saludable: {last_error}; revisa `llm-lab logs`", 6
+                ) from exc
         time.sleep(2)
     raise LabError(f"El servidor no quedó saludable: {last_error}", 6)
 

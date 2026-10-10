@@ -31,6 +31,8 @@
     "arguments": [
       "--n-gpu-layers",
       "99",
+      "--ubatch-size",
+      "256",
       "--flash-attn",
       "on",
       "--cache-type-k",
