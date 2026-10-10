@@ -14,6 +14,8 @@ y `docs/decisions/`. El estado vivo de implementación se mantiene en
 
 - No commitear `.env`, tokens, modelos, caches, builds ni resultados locales.
 - No exponer el servidor fuera de loopback por defecto.
+- Los modelos se descargan y viven en el HDD (`LLM_LAB_DATA_DIR` bajo
+  `LLM_LAB_DATA_MOUNT=/mnt/storage-lv`); nunca descargar GGUF al SSD.
 - No iniciar dos perfiles consumidores de GPU simultáneamente.
 - No terminar procesos GPU que no pertenezcan al proyecto.
 - Mantener perfiles declarativos; agregar un modelo no debe requerir editar la CLI.

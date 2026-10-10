@@ -34,6 +34,7 @@ class Settings:
     api_key: str
     start_timeout: int
     stop_timeout: int
+    data_mount: pathlib.Path | None = None
 
     @property
     def endpoint(self) -> str:
@@ -78,6 +79,8 @@ def load_settings(repo_dir: pathlib.Path) -> Settings:
     ) / "local-llm-agent-lab"
     archive_raw = value("LLM_LAB_ARCHIVE_DIR", "")
     archive_dir = pathlib.Path(archive_raw).expanduser().resolve() if archive_raw else None
+    mount_raw = value("LLM_LAB_DATA_MOUNT", "")
+    data_mount = pathlib.Path(mount_raw).expanduser().resolve() if mount_raw else None
     try:
         port = int(value("LLM_LAB_PORT", "18080"))
         start_timeout = int(value("LLM_LAB_START_TIMEOUT", "900"))
@@ -97,7 +100,25 @@ def load_settings(repo_dir: pathlib.Path) -> Settings:
         api_key=value("LLM_LAB_API_KEY", ""),
         start_timeout=start_timeout,
         stop_timeout=stop_timeout,
+        data_mount=data_mount,
     )
+
+
+def data_mount_problem(settings: Settings) -> str | None:
+    """Devuelve el motivo por el que dataDir incumple LLM_LAB_DATA_MOUNT, o None."""
+    if settings.data_mount is None:
+        return None
+    if settings.data_mount != settings.data_dir and settings.data_mount not in settings.data_dir.parents:
+        return f"{settings.data_dir} no está bajo LLM_LAB_DATA_MOUNT={settings.data_mount}"
+    if not os.path.ismount(settings.data_mount):
+        return f"{settings.data_mount} no está montado; los modelos caerían en otro disco"
+    return None
+
+
+def require_data_mount(settings: Settings) -> None:
+    problem = data_mount_problem(settings)
+    if problem:
+        raise LabError(problem, 2)
 
 
 def profile_files(repo_dir: pathlib.Path) -> list[pathlib.Path]:

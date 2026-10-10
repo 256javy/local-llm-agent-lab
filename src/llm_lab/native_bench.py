@@ -7,7 +7,7 @@ import subprocess
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from .core import LabError, Settings, compose_command, compose_env, file_sha256
+from .core import LabError, Settings, compose_command, compose_env, file_sha256, require_data_mount
 
 
 @dataclass(frozen=True)
@@ -124,6 +124,7 @@ def execute_native_bench(
     effective_repetitions = repetitions if repetitions is not None else int(matrix.get("repetitions", 5))
     if effective_repetitions < 1:
         raise LabError("--repetitions debe ser mayor que cero", 2)
+    require_data_mount(settings)
     model_path = settings.data_dir / "models" / profile["id"] / pathlib.Path(profile["model"]["file"]).name
     if not model_path.is_file():
         raise LabError(f"Falta el GGUF de {profile['id']}; ejecuta `llm-lab pull {profile['id']}`", 1)

@@ -84,6 +84,22 @@ docker image inspect local/local-llm-agent-lab:<perfil> \
 El `system_fingerprint` de las respuestas y los logs de arranque permiten
 corroborar también la revisión efectiva de llama.cpp.
 
+## Disco de los modelos
+
+En el equipo de referencia los modelos activos viven en el HDD: el SSD queda
+para sistema y trabajo, y la carga inicial más lenta es aceptable porque se usa
+un perfil durante largos periodos y los cambios de modelo son poco frecuentes.
+
+```bash
+LLM_LAB_DATA_DIR=/mnt/storage-lv/local-llm-agent-lab
+LLM_LAB_DATA_MOUNT=/mnt/storage-lv
+```
+
+Con `LLM_LAB_DATA_MOUNT` definido, `doctor` informa `data-mount` y `start`,
+`pull` y `bench` fallan si `LLM_LAB_DATA_DIR` no está bajo ese punto de montaje
+o si no está montado. Sin esa guarda, un HDD desmontado haría que Docker cree el
+directorio en el disco raíz y descargue allí el modelo.
+
 ## Archivo frío en otro disco
 
 `LLM_LAB_DATA_DIR` contiene los modelos activos. `LLM_LAB_ARCHIVE_DIR` puede

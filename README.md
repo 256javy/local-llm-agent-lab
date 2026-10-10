@@ -178,6 +178,11 @@ Por defecto, modelos, fuentes y caches se guardan bajo
 `~/.local/share/local-llm-agent-lab`. Define `LLM_LAB_DATA_DIR` para cambiarlo.
 Estos artefactos nunca se versionan.
 
+Para fijar los modelos a un disco concreto (por ejemplo un HDD), define también
+`LLM_LAB_DATA_MOUNT` con su punto de montaje: `doctor` lo verifica y `start`,
+`pull` y `bench` se niegan a operar si `LLM_LAB_DATA_DIR` queda fuera de él o si
+el disco no está montado, para que una descarga nunca caiga en otro disco.
+
 ```bash
 ./bin/llm-lab storage report
 ```

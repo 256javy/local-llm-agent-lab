@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from llm_lab.core import LabError, compose_env, docker_project_running, http_json, load_profiles, load_settings, parse_env_file, port_available, validate_profile
+from llm_lab.core import LabError, compose_env, data_mount_problem, require_data_mount, docker_project_running, http_json, load_profiles, load_settings, parse_env_file, port_available, validate_profile
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -33,6 +33,23 @@ class EnvironmentTests(unittest.TestCase):
             with mock.patch.dict(os.environ, {"LLM_LAB_ARCHIVE_DIR": temporary}, clear=False):
                 settings = load_settings(ROOT)
             self.assertEqual(settings.archive_dir, pathlib.Path(temporary).resolve())
+
+    def test_data_mount_requires_data_dir_inside_mounted_path(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            outside = {"LLM_LAB_DATA_DIR": temporary, "LLM_LAB_DATA_MOUNT": "/proc"}
+            with mock.patch.dict(os.environ, outside, clear=False):
+                settings = load_settings(ROOT)
+            self.assertIn("no está bajo", data_mount_problem(settings))
+            unmounted = {"LLM_LAB_DATA_DIR": f"{temporary}/data", "LLM_LAB_DATA_MOUNT": temporary}
+            with mock.patch.dict(os.environ, unmounted, clear=False):
+                settings = load_settings(ROOT)
+            self.assertIn("no está montado", data_mount_problem(settings))
+            with self.assertRaises(LabError):
+                require_data_mount(settings)
+        with mock.patch.dict(os.environ, {"LLM_LAB_DATA_DIR": "/proc/self", "LLM_LAB_DATA_MOUNT": "/proc"}, clear=False):
+            self.assertIsNone(data_mount_problem(load_settings(ROOT)))
+        with mock.patch.dict(os.environ, {"LLM_LAB_DATA_MOUNT": ""}, clear=False):
+            self.assertIsNone(data_mount_problem(load_settings(ROOT)))
 
     def test_cuda_architecture_override_replaces_profile_default(self) -> None:
         with mock.patch.dict(os.environ, {"LLM_LAB_CUDA_ARCHITECTURES": "89"}, clear=False):
