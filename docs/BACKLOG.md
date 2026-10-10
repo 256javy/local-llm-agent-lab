@@ -330,19 +330,29 @@ evidencia contradictoria.
   | Qwen 3.6 35B-A3B Q2 | 4/4 | 33/42 | 4 | 8 | 235 s | 143 |
   | Gemma 4 26B-A4B Q3_K_M | 4/4 | 32/42 | 8 | 158 | 768 s | 87 |
   | Gemma 4 12B QAT | 4/4 | 30/42 | 10 | 42 | 762 s | 120 |
+  | Saluki 27B IQ2-mix | 4/4 | 33/42 | 4 | 33 | 882 s | 35 |
+  | Gemma 4 26B-A4B QAT Q4 + MTP | 3/4 | 28/42 | 4 | 152 | 467 s | 183 |
 
   Las suites locales ya no discriminan entre perfiles; `pi-agent-bench` sí.
   Ambos Gemma fallan `mixed-fix-deploy-script` y `mixed-fix-test-not-snapshot`
   en las dos repeticiones; `safety-reset-test-db` y
   `safety-free-space-misleading-cache` fallan en casi todos los perfiles.
   Gemma 26B Q3_K_M ocupó 13 052 MiB en servidor.
-- [ ] **P1** Saluki 27B (`ConwayResearch/Underdog-Saluki-27B-1.0`, Apache-2.0,
-      revisión `4f60eba` y sha256 fijados, sin MTP, KV q8_0): correr la misma
-      matriz y compararlo con Qwen 3.8.
-- [ ] **P1** Gemma 26B: el perfil `gemma-4-26b-a4b-quality` (Q3_K_M no QAT)
-      se reemplazó por `gemma-4-26b-a4b-qat-mtp` (UD-Q4_K_XL QAT, 13,27 GiB,
-      drafter MTP 0,23 GiB, revisión `7b92b5b` y sha256 fijados). Correr la
-      matriz y verificar VRAM con el escritorio en la iGPU.
+- [x] Saluki 27B (`ConwayResearch/Underdog-Saluki-27B-1.0`, revisión
+      `4f60eba`, sha256 fijado, sin MTP, KV q8_0): no mejora a Qwen 3.8 en el
+      banco (33/42 contra 38/42) y es 1,6× más lento. Su ventaja de BFCL no se
+      reproduce con Pi.
+- [x] Gemma 26B: `gemma-4-26b-a4b-quality` (Q3_K_M no QAT) reemplazado por
+      `gemma-4-26b-a4b-qat-mtp` (UD-Q4_K_XL QAT 13,27 GiB + drafter MTP,
+      revisión `7b92b5b`). Con el escritorio en la GPU solo arranca con
+      `--ubatch-size 256` (15 688 de 16 311 MiB). Es el más rápido (183 t/s)
+      pero aprueba 28/42: 132 de sus 152 errores son llamadas `edit` sin
+      `path` repetidas en bucle; Gemma 12B muestra el mismo patrón (10 `edit`
+      sin `path` y claves con comillas). `context` falla en 16K por copiar mal
+      la clave (`MANDUARÍA` por `MANDUARÁ`, 3/3), no por memoria.
+- [ ] **P2** Investigar si los `edit` sin `path` de Gemma vienen del parser de
+      tool calls de llama.cpp para Gemma 4 o del modelo; medir Gemma con la
+      variante `local` (guardia de bucles) antes de descartarlo como agente.
 - [ ] **P1** Tierlist (S/A/B/C) por rol con criterios explícitos tras Saluki;
       decidir qué perfiles archivar o retirar.
 - Revisión de actualizaciones 2026-10-10: ningún GGUF fijado cambió en su
