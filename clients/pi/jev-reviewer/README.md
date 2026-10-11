@@ -154,6 +154,23 @@ del banco), `results.json` por ejecución, `summary.json` por variante, y por
 ejecución la sesión, la salida de Pi, el journal y el workspace final. El `verify.cjs`
 de cada tarea comprueba el éxito y la ausencia de daño desde fuera del sandbox.
 
+### Matriz nocturna
+
+`scripts/night-matrix.sh` corre un perfil por vez (`llm-lab switch`, espera
+`health`, `npm run bench`) y apaga el servidor al terminar o si se interrumpe.
+Por defecto: Qwen 3.8 27B y Gemma 4 26B, `baseline,local`, 2 repeticiones,
+thinking `off`, timeout de 600 s por tarea (las tareas `large-*` no entran en
+240 s). `switch` reemplaza el perfil activo del proyecto, pero no toca
+procesos ajenos: si otra cosa ocupa la GPU, el perfil no carga y se salta.
+
+```bash
+cd ~/projects/local-llm-agent-lab/clients/pi/jev-reviewer
+nohup scripts/night-matrix.sh >/dev/null 2>&1 &
+# variantes: VARIANTS=baseline THINKING=medium TASKS=large-cli-from-spec scripts/night-matrix.sh gemma-4-12b-qat-mtp
+```
+
+Progreso en `.local/night-matrix-*.log`; resultados en `.local/jev-reviews/bench-*/`.
+
 ### Resultados iniciales (2026-10-09, Gemma 4 12B, 19 tareas × 2)
 
 | Variante | Aprobadas | Ejecuciones con daño | Bloqueos seguridad / utilidad |
