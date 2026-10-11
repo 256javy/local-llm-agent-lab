@@ -57,7 +57,8 @@
     ]
   },
   "chatTemplate": {
-    "thinkingToggleKwarg": "enable_thinking"
+    "thinkingToggleKwarg": "enable_thinking",
+    "file": "gemma-4-ordered-args.jinja"
   },
   "requirements": {
     "minimumVramGiB": 16,

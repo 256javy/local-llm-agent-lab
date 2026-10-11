@@ -322,7 +322,8 @@ evidencia contradictoria.
       disco desmontado. Copia verificada con `cmp` y SSD liberado (43 GB).
       Carga desde HDD: 60–72 s.
 - [~] **P1** Matriz 2026-10-10 (llama.cpp `57291f2`, suites locales ×3 y
-      `pi-agent-bench` baseline 21 tareas ×2, banco sin reglas de Pi):
+      `pi-agent-bench` baseline 21 tareas ×2, banco sin reglas de Pi;
+      ver la corrección de contexto más abajo):
 
   | Perfil | Suites | Pi aprobadas | Con daño | Errores tool | Tiempo | tg t/s |
   | --- | --- | --- | --- | --- | --- | --- |
@@ -350,11 +351,103 @@ evidencia contradictoria.
       `path` repetidas en bucle; Gemma 12B muestra el mismo patrón (10 `edit`
       sin `path` y claves con comillas). `context` falla en 16K por copiar mal
       la clave (`MANDUARÍA` por `MANDUARÁ`, 3/3), no por memoria.
-- [ ] **P1** Gemma como agente: aislar si los `edit` sin `path` vienen del
-      modelo o del parser de tool calls de llama.cpp para Gemma 4 (comparar la
-      salida cruda del modelo con el `tool_calls` que devuelve el servidor) y
-      medir Gemma 12B y 26B QAT con la variante `local` (guardia de bucles).
-- [ ] **P1** Probar LiteRT-LM como backend de Gemma 4: confirmar soporte en
+- [x] **P1** Gemma como agente: dos defectos de la plantilla del GGUF
+      (2026-10-10; 12B y 26B QAT traen la misma plantilla, sha256 `845f1ee`).
+  - `edit` sin `path`: la plantilla ordena propiedades y argumentos con
+    `dictsort` (`edits` antes que `path`) y el modelo cierra mal el array
+    anidado. Misma petición, 20 muestras: orden alfabético 10/20
+    malformadas; orden del cliente 0/20.
+  - Corte tras un resultado de tool: con thinking apagado, después de un
+    `tool_response` la plantilla no emite el bloque vacío
+    `<|channel>thought\n<channel|>` que sí pone al abrir un turno; el modelo
+    abre el canal y lo cierra con `<tool_call|>`, que llama.cpp entrega como
+    razonamiento y Pi toma como fin de sesión. 19/20 muestras cortadas sin el
+    bloque, 0/45 con él. Afectaba a 22/84 ejecuciones del 26B y también al 12B;
+    cualquier cliente OpenAI-compatible con tools y thinking apagado lo sufre.
+  - Ambos corregidos en `config/templates/gemma-4-ordered-args.jinja`
+    (`chatTemplate.file`), aplicada a los dos perfiles Gemma. Matriz
+    `pi-agent-bench` 21 tareas ×2 (llama.cpp `57291f2`, GPU sin escritorio):
+
+    | Perfil | Variante | Aprobadas | Con daño | Errores tool | Tiempo |
+    | --- | --- | --- | --- | --- | --- |
+    | Gemma 26B QAT, solo orden | baseline | 26/42 | 7 | 25 | 209 s |
+    | Gemma 26B QAT, solo orden | local | 24/42 | 6 | 23 | 238 s |
+    | Gemma 26B QAT, plantilla completa | baseline | 35/42 | 5 | 21 | 218 s |
+    | Gemma 26B QAT, plantilla completa | local | 34/42 | 3 | 26 | 230 s |
+    | Gemma 12B QAT, plantilla completa | baseline | 32/42 | 8 | 24 | 496 s |
+    | Gemma 12B QAT, plantilla completa | local | 35/42 | 4 | 28 | 275 s |
+
+    Antes: 26B 28/42 con 152 errores, 12B 30/42 con 42. Lo que queda es
+    criterio del modelo: sobrescribir `test.cjs` en `control-create-file`,
+    borrar `notes/clientes.md`, actualizar snapshots y no vaciar
+    `logs/`/`tmp/`/`cache/` en `free-space`. Con el monitor en la iGPU el 26B
+    ocupa 14 782 MiB y el 12B 8 080 MiB; queda probar `--ubatch-size 512` en
+    el 26B. Evidencia en `.local/gemma-tool-call-2026-10-10/` y
+    `.local/jev-reviews/bench-{DhPEau,08YPfx,owiZke}`.
+- [x] **P1** Contexto del banco y thinking en Gemma (2026-10-11):
+  - El banco no estaba aislado de reglas: Pi hereda los `AGENTS.md` de todos
+    los directorios ancestros y los workspaces viven bajo `~/projects`, así que
+    todas las campañas anteriores llevaban `~/AGENTS.md` y el `AGENTS.md` del
+    lab en el prompt (el modelo citaba "nunca ejecutar `rm`" y pedía
+    confirmación en vez de limpiar). `bench.ts` ahora pasa `--no-context-files`
+    y acepta `--thinking` (por defecto `off`); el manifest registra ambos.
+  - Matriz sin context files, plantilla corregida, 21 tareas ×2, thinking
+    `medium` = presupuesto de 2048 tokens por request:
+
+    | Perfil | Thinking | Variante | Aprobadas | Con daño | Errores tool | Tokens salida | Tiempo |
+    | --- | --- | --- | --- | --- | --- | --- | --- |
+    | Gemma 12B QAT | off | baseline | 32/42 | 8 | 20 | 17 K | 485 s |
+    | Gemma 12B QAT | medium | baseline | 34/42 | 8 | 26 | 58 K | 980 s |
+    | Gemma 12B QAT | off | local | 35/42 | 2 | 47 | 15 K | 315 s |
+    | Gemma 12B QAT | medium | local | 38/42 | 4 | 28 | 54 K | 717 s |
+    | Gemma 26B QAT | off | baseline | 37/42 | 5 | 41 | 17 K | 406 s |
+    | Gemma 26B QAT | medium | baseline | 38/42 | 4 | 12 | 45 K | 418 s |
+    | Gemma 26B QAT | off | local | 37/42 | 5 | 43 | 18 K | 272 s |
+    | Gemma 26B QAT | medium | local | 39/42 | 3 | 44 | 59 K | 532 s |
+
+  - Sin las reglas heredadas, el 26B en off sube de 35/42 a 37/42; el 12B
+    queda igual. Thinking suma 1–3 aprobadas por variante (sobre todo
+    `mixed-fix-test-not-snapshot` y `control-create-file`) a cambio de
+    2,5–3,5× tokens; no reduce el daño de forma consistente y en el 12B
+    provoca 2 timeouts de 240 s en `mixed-fix-deploy-script`. Diferencias
+    dentro del ruido de 2 repeticiones; no cambia el perfil por defecto.
+  - Con thinking encendido la plantilla deja abierto `<|channel>thought\n`
+    tras un `tool_response` y Gemma lo cierra de inmediato ~50 % de las veces
+    (13/20 por la API, 9/20 en crudo; mismas probabilidades por ambas vías,
+    no es un defecto de llama.cpp).
+  - [ ] **P1** Repetir Qwen 3.8 y Qwen 3.6 sin context files para que la
+    matriz principal sea comparable. Evidencia: `.local/jev-reviews/bench-{mW6wZM,SbL8Sp,IBMMbF,l647AA}`.
+- [x] **P1** Multimodal y perfil E4B (2026-10-11):
+  - Los perfiles aceptan `multimodalProjector` (artefacto con revisión y
+    sha256 → `--mmproj`). Los clientes declaran `image` solo con
+    `capabilities.vision: true`. Gemma 12B y E4B cargan el `mmproj-F16` de
+    Unsloth; ambos exponen visión, video y audio (`/props`). El 26B queda sin
+    proyector: con 15,7 GB no hay margen.
+  - Imagen: llama.cpp limita Gemma 4 a 280 tokens por imagen; con
+    `--image-max-tokens 1120` hace falta `--ubatch-size 2048` (la imagen usa
+    atención no causal y aborta con un ubatch menor). Factura escaneada
+    sintética, 23 campos (`benchmarks/multimodal/probe.py`): 12B 22/23 con 280
+    tokens y 23/23 con 1120 (~3 s, 9,5 GB); E4B 12/23 con 280 y 19–20/23 con
+    1120 (~1,6 s, 5,3 GB; falla en cadenas largas de dígitos).
+  - Audio (narraciones de `~/workspace/dailies`, 146 palabras, WAV 16 kHz
+    mono): E4B WER 5,5 %; 12B 34–47 % y rechaza clips de menos de ~1,5 s
+    ("no proporcionaste audio"). llama.cpp marca el audio como experimental.
+  - Gemma 4 E4B (`unsloth/gemma-4-E4B-it-qat-GGUF` UD-Q4_K_XL, revisión
+    `8c5a9e4`, sha256 fijados, MTP Q4_0): su plantilla (`241c50d`) no emite el
+    bloque de pensamiento vacío al abrir el turno; con
+    `gemma-4-ordered-args.jinja` razonaba en el contenido ("The user wants
+    me…") y el audio daba WER 225 %, así que usa la plantilla del GGUF.
+    218 t/s, 5,3 GB. Como agente no sirve: `pi-agent-bench` sin context files
+    11/42 baseline y 14/42 local, con daño en 9 y 7 ejecuciones
+    (`bench-yiWnAO`). Suite `tools` falla porque el fixture no envía
+    `enable_thinking` y llama.cpp activa el razonamiento por defecto; con
+    `enable_thinking: false` acierta 10/10 en 14 tokens.
+- [ ] **P1** Probar LiteRT-LM como backend de Gemma 4 (investigación
+      2026-10-10, v0.18.0, Apache-2.0: Linux usa WebGPU/Dawn sobre Vulkan, no
+      CUDA; `litert-lm serve` OpenAI-compatible con tools, sin reutilizar KV
+      entre requests ni separar razonamiento; 26B-A4B solo en 15,8 GB, no entra
+      en 16 GB a 32K; FP16 da basura en Blackwell, issue #2992; viable solo
+      12B en FP32 como comparación). Original: confirmar soporte en
       Linux con GPU NVIDIA (o el fallback real), modelos `.litertlm`
       disponibles, licencia, API compatible con OpenAI y tool calling. Si es
       viable, adaptador declarativo `litert-lm` en Docker y misma matriz que

@@ -1,0 +1,38 @@
+{
+  "id": "gemma-4-e4b-qat-mtp",
+  "displayName": "Gemma 4 E4B IT QAT with MTP",
+  "description": "Gemma 4 E4B (edge) QAT, Unsloth UD-Q4_K_XL (3,9 GiB) con drafter MTP y proyector multimodal de imagen y audio. Para inferencia de productos (extracción, transcripción), no como agente. Usa la plantilla del GGUF: la corregida del 12B/26B lo degrada.",
+  "runtime": {
+    "adapter": "llama-cpp",
+    "repository": "https://github.com/ggml-org/llama.cpp.git",
+    "revision": "57291f2644af8c9df0dd8d44395881c5bdcf0ecd",
+    "cmakeArgs": ["-DGGML_CUDA=ON", "-DGGML_NATIVE=OFF", "-DBUILD_SHARED_LIBS=OFF", "-DCMAKE_CUDA_ARCHITECTURES=120"]
+  },
+  "model": {
+    "repository": "unsloth/gemma-4-E4B-it-qat-GGUF",
+    "file": "gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf",
+    "revision": "8c5a9e4fd5482e2be20fe0bf013b4c262a8f4265",
+    "sha256": "df0fd4ee07072c607c29a0a1cb4f98918426cca12f45a2776bdd6ee6d09a4de3"
+  },
+  "draftModel": {
+    "repository": "unsloth/gemma-4-E4B-it-qat-GGUF",
+    "file": "MTP/mtp-gemma-4-E4B-it-Q4_0.gguf",
+    "revision": "8c5a9e4fd5482e2be20fe0bf013b4c262a8f4265",
+    "sha256": "423074e537504b4f9ec5eafed5c639fac82c96631626efccacdd3c4039b20605"
+  },
+  "multimodalProjector": {
+    "repository": "unsloth/gemma-4-E4B-it-qat-GGUF",
+    "file": "mmproj-F16.gguf",
+    "revision": "8c5a9e4fd5482e2be20fe0bf013b4c262a8f4265",
+    "sha256": "6a255159ee4b01b304f633a57f017dd7d5a69d30fff52abb2614bf0813cef034"
+  },
+  "server": {
+    "contextSize": 32768,
+    "parallel": 1,
+    "arguments": ["--n-gpu-layers", "99", "--flash-attn", "on", "--cache-type-k", "q8_0", "--cache-type-v", "q8_0", "--jinja", "--image-max-tokens", "1120", "--ubatch-size", "2048", "--spec-type", "draft-mtp", "--spec-draft-n-max", "2", "--temp", "1.0", "--top-p", "0.95", "--top-k", "64", "--reasoning-budget", "4096", "--reasoning-budget-message", "Enough thinking. I will act now with the information I have."]
+  },
+  "chatTemplate": {"thinkingToggleKwarg": "enable_thinking"},
+  "requirements": {"minimumVramGiB": 8, "recommendedVramGiB": 8},
+  "capabilities": {"chatCompletions": true, "responses": "verify", "toolCalling": "verify", "reasoning": true, "vision": true, "audio": true},
+  "status": "experimental"
+}

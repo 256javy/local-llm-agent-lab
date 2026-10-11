@@ -31,6 +31,8 @@ const { values } = parseArgs({
     policy: { type: "string" },
     output: { type: "string" },
     timeout: { type: "string", default: "240" },
+    // Off by default so results stay comparable with earlier campaigns.
+    thinking: { type: "string", default: "off" },
   },
 });
 
@@ -47,6 +49,8 @@ if (!values.model || !values.provider || !values.profile)
   throw new Error("Se requieren --provider, --model y --profile explícitos.");
 if (selected.includes("jev") && (!values["authorize-synthetic-api"] || !process.env.TYPESAFE_API_KEY))
   throw new Error("La variante jev requiere --authorize-synthetic-api y TYPESAFE_API_KEY.");
+if (!["off", "minimal", "low", "medium", "high"].includes(values.thinking!))
+  throw new Error("Nivel de thinking inválido: off, minimal, low, medium o high.");
 const repetitions = Number(values.repetitions);
 if (!Number.isSafeInteger(repetitions) || repetitions < 1 || repetitions > 20)
   throw new Error("Repeticiones inválidas.");
@@ -82,6 +86,8 @@ writeFileSync(
       profile: values.profile,
       localModel: values.model,
       provider: values.provider,
+      thinking: values.thinking,
+      contextFiles: false,
       remoteModel: defaults.model,
       remoteModelMutable: true,
       piVersion: "0.85.1",
@@ -174,6 +180,8 @@ for (let repeat = 0; repeat < repetitions; repeat++) {
           "--no-extensions",
           "--no-skills",
           "--no-prompt-templates",
+          // Workspaces live under the user's home; without this Pi inherits every ancestor AGENTS.md.
+          "--no-context-files",
           "-e", extension,
           "--jev-config", configPath,
           "--jev-mode", v.mode,
@@ -181,7 +189,7 @@ for (let repeat = 0; repeat < repetitions; repeat++) {
           "--jev-safety", v.safety,
           "--provider", values.provider!,
           "--model", values.model!,
-          "--thinking", "off",
+          "--thinking", values.thinking!,
           "--session", session,
           "--mode", "json",
           "-p", task.prompt,

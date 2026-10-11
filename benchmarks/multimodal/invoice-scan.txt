@@ -1,0 +1,21 @@
+CLÍNICA ODONTOLÓGICA SONRISA SANA
+RUC 80012345-6 · Av. Mcal. López 1234, Asunción
+Tel. (021) 555-0199
+
+FACTURA CONTADO  Nº 001-002-0004587
+Fecha: 14/09/2026
+
+Paciente: María Belén Ortiz Giménez
+C.I.: 4.512.887
+
+Detalle                              Cant.   Precio unit.      Total
+Consulta de evaluación                 1         150.000      150.000
+Limpieza dental (profilaxis)           1         250.000      250.000
+Restauración resina pieza 36           2         320.000      640.000
+Radiografía periapical                 3          60.000      180.000
+
+                                     Subtotal:              1.220.000
+                                     IVA 10% incluido:        110.909
+                                     TOTAL Gs.:             1.220.000
+
+Profesional: Dr. Ramón Benítez — Reg. Prof. 7781

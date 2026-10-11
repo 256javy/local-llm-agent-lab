@@ -58,6 +58,8 @@ pub struct Profile {
     pub model: ArtifactSpec,
     #[serde(default)]
     pub draft_model: Option<ArtifactSpec>,
+    #[serde(default)]
+    pub multimodal_projector: Option<ArtifactSpec>,
     pub server: ServerSpec,
     pub requirements: Requirements,
     pub status: String,
@@ -151,6 +153,9 @@ fn validate(profile: &Profile) -> Result<(), Vec<String>> {
     validate_artifact(&profile.model, "model", &mut errors);
     if let Some(ref draft) = profile.draft_model {
         validate_artifact(draft, "draftModel", &mut errors);
+    }
+    if let Some(ref projector) = profile.multimodal_projector {
+        validate_artifact(projector, "multimodalProjector", &mut errors);
     }
     if profile.server.context_size < 1024 {
         errors.push("server.contextSize inválido".to_string());

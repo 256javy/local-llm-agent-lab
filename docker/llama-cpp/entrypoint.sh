@@ -48,6 +48,11 @@ if jq -e '.draftModel != null' "${profile_file}" >/dev/null; then
   args+=(--model-draft "${draft_path}")
 fi
 
+if jq -e '.multimodalProjector != null' "${profile_file}" >/dev/null; then
+  mmproj_path="$(download_artifact '.multimodalProjector' | tail -n 1)"
+  args+=(--mmproj "${mmproj_path}")
+fi
+
 if [[ "${LLM_LAB_MODE:-serve}" == "pull" ]]; then
   echo "Artefactos preparados para ${profile_id}"
   exit 0
@@ -55,6 +60,13 @@ fi
 
 if [[ -n "${LLM_LAB_API_KEY:-}" ]]; then
   args+=(--api-key "${LLM_LAB_API_KEY}")
+fi
+
+template_file="$(jq -r '.chatTemplate.file // ""' "${profile_file}")"
+if [[ -n "${template_file}" ]]; then
+  template_path="/opt/llm-lab/templates/${template_file}"
+  [[ -r "${template_path}" ]] || { echo "ERROR: plantilla no legible: ${template_path}" >&2; exit 2; }
+  args+=(--chat-template-file "${template_path}")
 fi
 
 while IFS= read -r arg; do args+=("${arg}"); done < <(jq -r '.server.arguments[]' "${profile_file}")

@@ -289,13 +289,18 @@ def pi_max_tokens(profile: dict[str, Any]) -> int:
     return min(PI_MAX_OUTPUT_TOKENS, profile["server"]["contextSize"] // 4)
 
 
+def input_modalities(profile: dict[str, Any]) -> list[str]:
+    # Only a verified capability reaches clients; "verify" stays text-only.
+    return ["text", "image"] if profile["capabilities"]["vision"] is True else ["text"]
+
+
 def pi_model(profile: dict[str, Any]) -> dict[str, Any]:
     reasoning = profile["capabilities"]["reasoning"] is True
     model: dict[str, Any] = {
         "id": profile["id"],
         "name": profile["displayName"],
         "reasoning": reasoning,
-        "input": ["text"],
+        "input": input_modalities(profile),
         "contextWindow": profile["server"]["contextSize"],
         "maxTokens": pi_max_tokens(profile),
         "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0},
@@ -369,7 +374,7 @@ def merge_settings(current: dict[str, Any], recommended: dict[str, Any]) -> dict
 def opencode_config(settings: Settings) -> dict[str, Any]:
     models = {}
     for profile in load_profiles(settings.repo_dir).values():
-        models[profile["id"]] = {"name": profile["displayName"], "limit": {"context": profile["server"]["contextSize"], "output": min(32768, profile["server"]["contextSize"] // 4)}}
+        models[profile["id"]] = {"name": profile["displayName"], "limit": {"context": profile["server"]["contextSize"], "output": min(32768, profile["server"]["contextSize"] // 4)}, "modalities": {"input": input_modalities(profile), "output": ["text"]}}
     return {"$schema": "https://opencode.ai/config.json", "provider": {"local-lab": {"npm": "@ai-sdk/openai-compatible", "name": "Local LLM Agent Lab", "options": {"baseURL": settings.endpoint, "apiKey": "local"}, "models": models}}}
 
 

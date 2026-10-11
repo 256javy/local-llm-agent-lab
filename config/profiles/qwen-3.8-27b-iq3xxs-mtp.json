@@ -17,7 +17,7 @@
     "repository": "unsloth/Qwen3.8-27B-GGUF",
     "file": "Qwen3.8-27B-UD-IQ3_XXS.gguf",
     "revision": "4ca720788d1e01f1bff70c033e0d0028fd02e502",
-    "sha256": null
+    "sha256": "c0b7c3038681ed2e3040456c1dd45f9858b6c2290bed172c70388a94874f3eee"
   },
   "server": {
     "contextSize": 32768,
@@ -67,5 +67,5 @@
     "vision": false,
     "audio": false
   },
-  "status": "experimental"
+  "status": "candidate"
 }

@@ -53,6 +53,8 @@ Perfiles retirados o descartados:
 ## Consecuencias
 
 - Pi y los ejemplos de arranque usan Qwen 3.8 por defecto.
+- El perfil de Qwen 3.8 pasa a `candidate` con el sha256 del GGUF fijado
+  (`c0b7c303…4f3eee`, igual al de Hugging Face en la revisión `4ca7207`).
 - Reincorporar un perfil retirado exige repetir la misma matriz y superar al
   perfil que ocupa su rol.
 - Las cifras viven en `docs/BACKLOG.md` (I-16); los JSON crudos quedan fuera

@@ -20,13 +20,19 @@
     "revision": "980b060c40a8539ac159e0501a3e0f66a6365af3",
     "sha256": null
   },
+  "multimodalProjector": {
+    "repository": "unsloth/gemma-4-12B-it-qat-GGUF",
+    "file": "mmproj-F16.gguf",
+    "revision": "980b060c40a8539ac159e0501a3e0f66a6365af3",
+    "sha256": "ecc4e93128da8363b7dbf2193eab98cf1142353f52ceaa0c95c0872997aaadd3"
+  },
   "server": {
     "contextSize": 65536,
     "parallel": 1,
-    "arguments": ["--n-gpu-layers", "99", "--flash-attn", "on", "--cache-type-k", "q8_0", "--cache-type-v", "q8_0", "--jinja", "--spec-type", "draft-mtp", "--spec-draft-n-max", "2", "--temp", "1.0", "--top-p", "0.95", "--top-k", "64", "--reasoning-budget", "8192", "--reasoning-budget-message", "Enough thinking. I will act now with the information I have."]
+    "arguments": ["--n-gpu-layers", "99", "--flash-attn", "on", "--cache-type-k", "q8_0", "--cache-type-v", "q8_0", "--jinja", "--image-max-tokens", "1120", "--ubatch-size", "2048", "--spec-type", "draft-mtp", "--spec-draft-n-max", "2", "--temp", "1.0", "--top-p", "0.95", "--top-k", "64", "--reasoning-budget", "8192", "--reasoning-budget-message", "Enough thinking. I will act now with the information I have."]
   },
-  "chatTemplate": {"thinkingToggleKwarg": "enable_thinking"},
+  "chatTemplate": {"thinkingToggleKwarg": "enable_thinking", "file": "gemma-4-ordered-args.jinja"},
   "requirements": {"minimumVramGiB": 12, "recommendedVramGiB": 16},
-  "capabilities": {"chatCompletions": true, "responses": "verify", "toolCalling": true, "reasoning": true, "vision": false, "audio": false},
+  "capabilities": {"chatCompletions": true, "responses": "verify", "toolCalling": true, "reasoning": true, "vision": true, "audio": "verify"},
   "status": "candidate"
 }
