@@ -22,6 +22,7 @@
     },
     "model": {"$ref": "#/$defs/artifact"},
     "draftModel": {"$ref": "#/$defs/artifact"},
+    "multimodalProjector": {"$ref": "#/$defs/artifact"},
     "server": {
       "type": "object",
       "required": ["contextSize", "parallel", "arguments"],

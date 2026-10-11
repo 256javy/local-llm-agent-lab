@@ -144,7 +144,7 @@ def validate_profile(profile: dict[str, Any], source: str = "perfil") -> list[st
             errors.append(f"{source}: runtime.{field} es obligatorio")
     if runtime.get("adapter") != "llama-cpp":
         errors.append(f"{source}: adaptador no soportado: {runtime.get('adapter')}")
-    for artifact_name in ("model", "draftModel"):
+    for artifact_name in ("model", "draftModel", "multimodalProjector"):
         artifact = profile.get(artifact_name)
         if artifact is None:
             continue

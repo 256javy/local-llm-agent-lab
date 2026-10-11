@@ -48,6 +48,11 @@ if jq -e '.draftModel != null' "${profile_file}" >/dev/null; then
   args+=(--model-draft "${draft_path}")
 fi
 
+if jq -e '.multimodalProjector != null' "${profile_file}" >/dev/null; then
+  mmproj_path="$(download_artifact '.multimodalProjector' | tail -n 1)"
+  args+=(--mmproj "${mmproj_path}")
+fi
+
 if [[ "${LLM_LAB_MODE:-serve}" == "pull" ]]; then
   echo "Artefactos preparados para ${profile_id}"
   exit 0

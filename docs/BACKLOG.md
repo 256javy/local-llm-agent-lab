@@ -417,6 +417,31 @@ evidencia contradictoria.
     no es un defecto de llama.cpp).
   - [ ] **P1** Repetir Qwen 3.8 y Qwen 3.6 sin context files para que la
     matriz principal sea comparable. Evidencia: `.local/jev-reviews/bench-{mW6wZM,SbL8Sp,IBMMbF,l647AA}`.
+- [x] **P1** Multimodal y perfil E4B (2026-10-11):
+  - Los perfiles aceptan `multimodalProjector` (artefacto con revisión y
+    sha256 → `--mmproj`). Los clientes declaran `image` solo con
+    `capabilities.vision: true`. Gemma 12B y E4B cargan el `mmproj-F16` de
+    Unsloth; ambos exponen visión, video y audio (`/props`). El 26B queda sin
+    proyector: con 15,7 GB no hay margen.
+  - Imagen: llama.cpp limita Gemma 4 a 280 tokens por imagen; con
+    `--image-max-tokens 1120` hace falta `--ubatch-size 2048` (la imagen usa
+    atención no causal y aborta con un ubatch menor). Factura escaneada
+    sintética, 23 campos (`benchmarks/multimodal/probe.py`): 12B 22/23 con 280
+    tokens y 23/23 con 1120 (~3 s, 9,5 GB); E4B 12/23 con 280 y 19–20/23 con
+    1120 (~1,6 s, 5,3 GB; falla en cadenas largas de dígitos).
+  - Audio (narraciones de `~/workspace/dailies`, 146 palabras, WAV 16 kHz
+    mono): E4B WER 5,5 %; 12B 34–47 % y rechaza clips de menos de ~1,5 s
+    ("no proporcionaste audio"). llama.cpp marca el audio como experimental.
+  - Gemma 4 E4B (`unsloth/gemma-4-E4B-it-qat-GGUF` UD-Q4_K_XL, revisión
+    `8c5a9e4`, sha256 fijados, MTP Q4_0): su plantilla (`241c50d`) no emite el
+    bloque de pensamiento vacío al abrir el turno; con
+    `gemma-4-ordered-args.jinja` razonaba en el contenido ("The user wants
+    me…") y el audio daba WER 225 %, así que usa la plantilla del GGUF.
+    218 t/s, 5,3 GB. Como agente no sirve: `pi-agent-bench` sin context files
+    11/42 baseline y 14/42 local, con daño en 9 y 7 ejecuciones
+    (`bench-yiWnAO`). Suite `tools` falla porque el fixture no envía
+    `enable_thinking` y llama.cpp activa el razonamiento por defecto; con
+    `enable_thinking: false` acierta 10/10 en 14 tokens.
 - [ ] **P1** Probar LiteRT-LM como backend de Gemma 4 (investigación
       2026-10-10, v0.18.0, Apache-2.0: Linux usa WebGPU/Dawn sobre Vulkan, no
       CUDA; `litert-lm serve` OpenAI-compatible con tools, sin reutilizar KV

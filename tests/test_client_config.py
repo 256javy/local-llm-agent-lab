@@ -7,8 +7,8 @@ import subprocess
 import tempfile
 import unittest
 
-from llm_lab.cli import merge_settings, pi_config_drift, pi_model
-from llm_lab.core import load_profiles, validate_profile
+from llm_lab.cli import merge_settings, opencode_config, pi_config_drift, pi_model
+from llm_lab.core import load_profiles, load_settings, validate_profile
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -83,6 +83,23 @@ class PiClientConfigTests(unittest.TestCase):
         self.assertTrue(any("chatTemplate" in error for error in validate_profile(profile)))
         profile["chatTemplate"] = {"unknown": "x"}
         self.assertTrue(any("chatTemplate" in error for error in validate_profile(profile)))
+
+    def test_only_verified_vision_reaches_clients(self) -> None:
+        profile = json.loads(json.dumps(self.profiles["qwen-3.6-moe-2bit"]))
+        for vision, expected in ((True, ["text", "image"]), ("verify", ["text"]), (False, ["text"])):
+            profile["capabilities"]["vision"] = vision
+            self.assertEqual(pi_model(profile)["input"], expected)
+
+    def test_opencode_declares_profile_modalities(self) -> None:
+        settings = load_settings(ROOT)
+        for profile_id, model in opencode_config(settings)["provider"]["local-lab"]["models"].items():
+            self.assertEqual(model["modalities"]["input"], pi_model(self.profiles[profile_id])["input"])
+
+    def test_invalid_multimodal_projector_is_rejected(self) -> None:
+        profile = dict(self.profiles["qwen-3.6-moe-2bit"])
+        profile["multimodalProjector"] = {"repository": "no-slash", "file": "", "sha256": "xyz"}
+        errors = [error for error in validate_profile(profile) if "multimodalProjector" in error]
+        self.assertEqual(len(errors), 3)
 
 
 if __name__ == "__main__":
