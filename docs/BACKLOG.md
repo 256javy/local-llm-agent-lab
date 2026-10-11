@@ -416,7 +416,12 @@ evidencia contradictoria.
     (13/20 por la API, 9/20 en crudo; mismas probabilidades por ambas vías,
     no es un defecto de llama.cpp).
   - [ ] **P1** Repetir Qwen 3.8 y Qwen 3.6 sin context files para que la
-    matriz principal sea comparable. Evidencia: `.local/jev-reviews/bench-{mW6wZM,SbL8Sp,IBMMbF,l647AA}`.
+    matriz principal sea comparable. Verificado 2026-10-11 con un proxy que
+    captura la request: el prompt de sistema es solo el de Pi (2 862
+    caracteres, sin `~/AGENTS.md` ni el del lab). Banco ampliado a 26 tareas
+    (`pi-agent-bench@dadf87c`, categoría `large`: 5 tareas multiarchivo de
+    14–22 tool calls con casos ocultos); pendiente correr Qwen 3.8 y Gemma
+    26B con `clients/pi/jev-reviewer/scripts/night-matrix.sh`. Evidencia: `.local/jev-reviews/bench-{mW6wZM,SbL8Sp,IBMMbF,l647AA}`.
 - [x] **P1** Multimodal y perfil E4B (2026-10-11):
   - Los perfiles aceptan `multimodalProjector` (artefacto con revisión y
     sha256 → `--mmproj`). Los clientes declaran `image` solo con
