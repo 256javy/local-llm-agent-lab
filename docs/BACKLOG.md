@@ -322,7 +322,8 @@ evidencia contradictoria.
       disco desmontado. Copia verificada con `cmp` y SSD liberado (43 GB).
       Carga desde HDD: 60–72 s.
 - [~] **P1** Matriz 2026-10-10 (llama.cpp `57291f2`, suites locales ×3 y
-      `pi-agent-bench` baseline 21 tareas ×2, banco sin reglas de Pi):
+      `pi-agent-bench` baseline 21 tareas ×2, banco sin reglas de Pi;
+      ver la corrección de contexto más abajo):
 
   | Perfil | Suites | Pi aprobadas | Con daño | Errores tool | Tiempo | tg t/s |
   | --- | --- | --- | --- | --- | --- | --- |
@@ -383,6 +384,39 @@ evidencia contradictoria.
     ocupa 14 782 MiB y el 12B 8 080 MiB; queda probar `--ubatch-size 512` en
     el 26B. Evidencia en `.local/gemma-tool-call-2026-10-10/` y
     `.local/jev-reviews/bench-{DhPEau,08YPfx,owiZke}`.
+- [x] **P1** Contexto del banco y thinking en Gemma (2026-10-11):
+  - El banco no estaba aislado de reglas: Pi hereda los `AGENTS.md` de todos
+    los directorios ancestros y los workspaces viven bajo `~/projects`, así que
+    todas las campañas anteriores llevaban `~/AGENTS.md` y el `AGENTS.md` del
+    lab en el prompt (el modelo citaba "nunca ejecutar `rm`" y pedía
+    confirmación en vez de limpiar). `bench.ts` ahora pasa `--no-context-files`
+    y acepta `--thinking` (por defecto `off`); el manifest registra ambos.
+  - Matriz sin context files, plantilla corregida, 21 tareas ×2, thinking
+    `medium` = presupuesto de 2048 tokens por request:
+
+    | Perfil | Thinking | Variante | Aprobadas | Con daño | Errores tool | Tokens salida | Tiempo |
+    | --- | --- | --- | --- | --- | --- | --- | --- |
+    | Gemma 12B QAT | off | baseline | 32/42 | 8 | 20 | 17 K | 485 s |
+    | Gemma 12B QAT | medium | baseline | 34/42 | 8 | 26 | 58 K | 980 s |
+    | Gemma 12B QAT | off | local | 35/42 | 2 | 47 | 15 K | 315 s |
+    | Gemma 12B QAT | medium | local | 38/42 | 4 | 28 | 54 K | 717 s |
+    | Gemma 26B QAT | off | baseline | 37/42 | 5 | 41 | 17 K | 406 s |
+    | Gemma 26B QAT | medium | baseline | 38/42 | 4 | 12 | 45 K | 418 s |
+    | Gemma 26B QAT | off | local | 37/42 | 5 | 43 | 18 K | 272 s |
+    | Gemma 26B QAT | medium | local | 39/42 | 3 | 44 | 59 K | 532 s |
+
+  - Sin las reglas heredadas, el 26B en off sube de 35/42 a 37/42; el 12B
+    queda igual. Thinking suma 1–3 aprobadas por variante (sobre todo
+    `mixed-fix-test-not-snapshot` y `control-create-file`) a cambio de
+    2,5–3,5× tokens; no reduce el daño de forma consistente y en el 12B
+    provoca 2 timeouts de 240 s en `mixed-fix-deploy-script`. Diferencias
+    dentro del ruido de 2 repeticiones; no cambia el perfil por defecto.
+  - Con thinking encendido la plantilla deja abierto `<|channel>thought\n`
+    tras un `tool_response` y Gemma lo cierra de inmediato ~50 % de las veces
+    (13/20 por la API, 9/20 en crudo; mismas probabilidades por ambas vías,
+    no es un defecto de llama.cpp).
+  - [ ] **P1** Repetir Qwen 3.8 y Qwen 3.6 sin context files para que la
+    matriz principal sea comparable. Evidencia: `.local/jev-reviews/bench-{mW6wZM,SbL8Sp,IBMMbF,l647AA}`.
 - [ ] **P1** Probar LiteRT-LM como backend de Gemma 4 (investigación
       2026-10-10, v0.18.0, Apache-2.0: Linux usa WebGPU/Dawn sobre Vulkan, no
       CUDA; `litert-lm serve` OpenAI-compatible con tools, sin reutilizar KV
