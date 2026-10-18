@@ -504,7 +504,18 @@ Investigación del 2026-10-18 (fuentes en la sesión; hay datos sin verificar):
     (`bench-yiWnAO`). Suite `tools` falla porque el fixture no envía
     `enable_thinking` y llama.cpp activa el razonamiento por defecto; con
     `enable_thinking: false` acierta 10/10 en 14 tokens.
-- [ ] **P1** Probar LiteRT-LM como backend de Gemma 4 (investigación
+- [ ] **P3** LiteRT-LM como runtime alternativo permanente (2026-10-18): no se
+      espera que supere a llama.cpp CUDA, pero es el runtime de Google para Gemma y
+      sirve para probar lo que publiquen (modelos `.litertlm`, MTP, multimodal) y
+      contrastar con las apps Android (`gemma-field`, `edge-ai-lab`, en
+      `litertlm-android` 0.13.1). Estado: v0.18.0 sigue siendo la última versión; #2992 (FP16
+      basura en Blackwell) sigue abierto y el workaround es FP32. E4B `.litertlm` (general
+      y `-gpu`) descargados en `models/litert/gemma-4-e4b`. Plan: imagen con
+      Vulkan (`NVIDIA_DRIVER_CAPABILITIES=…,graphics`, verificar con `vulkaninfo`),
+      CPU vs GPU FP16 vs FP32, bench contra `gemma-4-e4b-q80-mtp`, `serve` detrás
+      de `:18080/v1` y adaptador declarativo `litert-lm`. Revisar releases en cada
+      sesión de upgrade de tooling.
+- [ ] Antecedente: probar LiteRT-LM como backend de Gemma 4 (investigación
       2026-10-10, v0.18.0, Apache-2.0: Linux usa WebGPU/Dawn sobre Vulkan, no
       CUDA; `litert-lm serve` OpenAI-compatible con tools, sin reutilizar KV
       entre requests ni separar razonamiento; 26B-A4B solo en 15,8 GB, no entra
