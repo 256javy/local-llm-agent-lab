@@ -365,9 +365,10 @@ Cada cambio se valida por separado para atribuir diferencias de rendimiento.
 
 Investigación del 2026-10-18 (fuentes en la sesión; hay datos sin verificar):
 
-- [~] **P1** KLD con `llama-perplexity` (wikitext-2, logits base en el HDD
-      `eval/kld-base/`): `llm-lab kld <perfil> --reference <perfil Q8_0/BF16>`.
-      Ya está implementado; falta la primera corrida real. Es el filtro para descartar cuantizaciones.
+- [ ] **P3** KLD con `llama-perplexity`: `llm-lab kld <perfil> --reference <perfil>`
+      está implementado, pero no se usa como criterio. Las cuantizaciones se eligen
+      por su desempeño real en este hardware (velocidad, suites y pi-agent-bench),
+      no por la distancia a una referencia.
 - [ ] **P1** BFCL v4 (tool calling multi-turn/agentic), directo o vía EvalScope.
 - [ ] **P2** Aider Polyglot (225 ejercicios, 6 lenguajes) contra `:18080/v1`.
 - [ ] **P2** Terminal-Bench 2.0 (Harbor), subset; resolver el ruteo de LiteLLM.
