@@ -346,8 +346,36 @@ Cada cambio se valida por separado para atribuir diferencias de rendimiento.
       en los cinco perfiles base. El objeto del tag anotado es `757cad02`; se fija
       el commit. v0.7.0 elimina `--mmap`: `qwen-3.6-moe-2bit` usa
       `--load-mode mmap` y `llm-lab bench` lo traduce. Qwen IQ3_XXS sobre 13.0.3:
-      smoke ✅. Falta la matriz completa de candidate contra el baseline
-      `benchmark-results/llama-bench/llamacpp-ab/base/`.
+      smoke ✅. Matriz v0.7.0 + CUDA 13.0.3 (2026-10-18, 16 perfiles, suites
+      locales ×1 + llama-bench standard r5; tg sin MTP):
+
+      | Perfil | smoke | tools | quality | context | perf s | pp2048 | tg128 | VRAM GiB |
+      |---|---|---|---|---|---:|---:|---:|---:|
+      | gemma-4-12b-qat | 2/2 | 2/2 | 3/3 | 3/3 | 0,23 | 2436 | 54,2 | 9,3 |
+      | gemma-4-12b-q6kxl | 2/2 | 2/2 | 3/3 | 3/3 | 0,35 | 1915 | 35,2 | 12,9 |
+      | gemma-4-12b-q80 | 2/2 | 2/2 | 3/3 | 3/3 | 0,38 | 2298 | 30,5 | 14,7 |
+      | gemma-4-26b-a4b-qat | 2/2 | 2/2 | 3/3 | 2/3 | 0,17 | 3646 | 125,2 | 14,5 |
+      | gemma-4-26b-a4b-iq4xs | 2/2 | 2/2 | 3/3 | 3/3 | 0,20 | 3446 | 93,5 | 14,1 |
+      | gemma-4-26b-a4b-q3kxl | 2/2 | 2/2 | 3/3 | 3/3 | 0,19 | 3501 | 95,2 | 13,4 |
+      | gemma-4-31b-iq3xxs | 2/2 | 2/2 | 3/3 | 3/3 | 0,49 | 883 | 28,2 | 14,4 |
+      | gemma-4-31b-q2kxl | 2/2 | 2/2 | 3/3 | 3/3 | 0,58 | 678 | 29,1 | 14,3 |
+      | gemma-4-31b-q3ks | 2/2 | 2/2 | 3/3 | sin JSON | 0,59 | 728 | 26,2 | 15,2 |
+      | gemma-4-e4b-qat | 2/2 | 1/2 | 3/3 | 3/3 | 0,25 | 5713 | 109,2 | 5,0 |
+      | gemma-4-e4b-q80 | 2/2 | 1/2 | 3/3 | 3/3 | 0,36 | 5462 | 68,6 | 6,3 |
+      | qwen-3.6-moe-2bit | 1/2 | 2/2 | 3/3 | 3/3 | 0,20 | 2724 | 116,0 | 13,0 |
+      | qwen-3.8-27b-iq3xxs | 2/2 | 2/2 | 3/3 | 3/3 | 0,35 | 1013 | 32,0 | 11,8 |
+      | qwen-3.8-27b-iq3s | 2/2 | 2/2 | 3/3 | 3/3 | 0,57 | 1021 | 30,2 | 12,5 |
+      | qwen-3.8-27b-q3kxl | 2/2 | 2/2 | 3/3 | 3/3 | 0,42 | 1055 | 28,8 | 13,6 |
+      | qwen-3.8-27b-iq4xs | 2/2 | 2/2 | 3/3 | 3/3 | 0,43 | 1076 | 27,5 | 14,6 |
+
+      Hallazgos: v0.7.0 sube Qwen 3.8 IQ3_XXS de 22,8 a 32,0 t/s en tg128 y de 850 a 1013 t/s en
+      pp2048 (Gemma 12B QAT sin cambios). Las variantes QAT Q4 son las más
+      rápidas de su familia (26B QAT 125 t/s frente a 93–95 t/s de IQ4_XS/Q3_K_XL). Las suites
+      locales siguen saturadas: la elección entre variantes requiere
+      pi-agent-bench. E2B (BF16 y QAT) falla `smoke-tool` y queda descartado como agente.
+      Los fallos de context/tools/smoke son de capacidad del modelo, no del runtime;
+      31B Q3_K_S no completa context con 24K. Evidencia:
+      `benchmark-results/llama-bench/{llamacpp-ab/v070,variants}/`.
 - [ ] **Paso 3 — master post v0.7.0.** Interesan `2744e48d1` (MMVQ más rápido
       para Q3_K/Q6_K/Q2_K/IQ3_S/IQ2_S), `f2f667b02` (fusión top-k de expertos MoE)
       y fixes de fattn. Hacer A/B con llama-bench contra v0.7.0 y adoptar si mejora.
