@@ -23,7 +23,7 @@ Estado confirmado al 2026-08-31:
   contienen el upgrade CUDA 13, la promoción de la TUI Rust, `llama-bench`
   nativo y la base inmutable del store de trazas, respectivamente. El PR #3
   documentó el roadmap que conecta benchmarks y trazas.
-- CUDA 13.0.3 y llama.cpp v0.7.0 (`620d222`, b11669; I-17) están validados en la RTX 5060 Ti con Gemma
+- CUDA 13.0.3 y llama.cpp master `ff5a233` (post v0.7.0; I-17) están validados en la RTX 5060 Ti con Gemma
   12B, Qwen 3.6 y Qwen 3.8. Gemma 26B es el único perfil cuyo GGUF no está
   descargado.
 - Los modelos activos viven en `LLM_LAB_DATA_DIR`; el archivo frío configurable
@@ -376,9 +376,13 @@ Cada cambio se valida por separado para atribuir diferencias de rendimiento.
       Los fallos de context/tools/smoke son de capacidad del modelo, no del runtime;
       31B Q3_K_S no completa context con 24K. Evidencia:
       `benchmark-results/llama-bench/{llamacpp-ab/v070,variants}/`.
-- [ ] **Paso 3 — master post v0.7.0.** Interesan `2744e48d1` (MMVQ más rápido
-      para Q3_K/Q6_K/Q2_K/IQ3_S/IQ2_S), `f2f667b02` (fusión top-k de expertos MoE)
-      y fixes de fattn. Hacer A/B con llama-bench contra v0.7.0 y adoptar si mejora.
+- [x] **Paso 3 — master `ff5a233` (52 commits sobre v0.7.0)** fijado en todos
+      los perfiles. A/B con llama-bench en 7 perfiles: pp2048 +1,5 a +2,4 %, tg128 +1,0 a
+      +5,2 % (máximo en Gemma 26B QAT, 125→132 t/s, por la fusión top-k MoE `f2f667b02`);
+      sin regresiones y smoke 7/7. El MMVQ low-bit aporta ~1–2 % en Blackwell.
+      Evidencia: `benchmark-results/llama-bench/llamacpp-ab/master/`.
+- Roles: E4B queda como asistente de visión/texto (Odontia y similares), no como
+      agente con tools; E2B descartado.
 - [~] Variantes de cuantización (perfiles `experimental`, solo texto, en el HDD):
       Qwen 3.8 27B IQ3_S, Q3_K_XL, IQ4_XS (descargadas); Gemma 4 12B Q6_K_XL/Q8_0,
       26B-A4B IQ4_XS/Q3_K_XL, 31B IQ3_XXS/Q2_K_XL/Q3_K_S, E4B Q8_0, E2B BF16 y

@@ -5,7 +5,7 @@
   "runtime": {
     "adapter": "llama-cpp",
     "repository": "https://github.com/ggml-org/llama.cpp.git",
-    "revision": "620d2225cc436ab0b001e3200e590e3b286ef9ab",
+    "revision": "ff5a23376725e5a889fa0bfb987b7541dc304da0",
     "cmakeArgs": ["-DGGML_CUDA=ON", "-DGGML_NATIVE=OFF", "-DBUILD_SHARED_LIBS=OFF", "-DCMAKE_CUDA_ARCHITECTURES=120"]
   },
   "model": {

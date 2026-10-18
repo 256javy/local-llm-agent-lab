@@ -85,7 +85,7 @@ class ProfileTests(unittest.TestCase):
     def test_repository_profiles_pin_llama_cpp_for_sm120(self) -> None:
         profiles = load_profiles(ROOT)
         revisions = {profile["runtime"]["revision"] for profile in profiles.values()}
-        self.assertEqual(revisions, {"620d2225cc436ab0b001e3200e590e3b286ef9ab"})
+        self.assertEqual(revisions, {"ff5a23376725e5a889fa0bfb987b7541dc304da0"})
         cmake_args = {tuple(profile["runtime"]["cmakeArgs"]) for profile in profiles.values()}
         self.assertEqual(len(cmake_args), 1)
         for profile in profiles.values():
