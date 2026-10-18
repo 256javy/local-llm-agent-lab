@@ -1,0 +1,76 @@
+{
+  "id": "gemma-4-12b-q6kxl-mtp",
+  "displayName": "Gemma 4 12b IT Q6_K_XL with MTP",
+  "description": "Variante de cuantización Q6_K_XL de Gemma 4 12b (unsloth/gemma-4-12b-it-GGUF); solo texto, para comparar contra la variante QAT.",
+  "runtime": {
+    "adapter": "llama-cpp",
+    "repository": "https://github.com/ggml-org/llama.cpp.git",
+    "revision": "620d2225cc436ab0b001e3200e590e3b286ef9ab",
+    "cmakeArgs": [
+      "-DGGML_CUDA=ON",
+      "-DGGML_NATIVE=OFF",
+      "-DBUILD_SHARED_LIBS=OFF",
+      "-DCMAKE_CUDA_ARCHITECTURES=120"
+    ]
+  },
+  "model": {
+    "repository": "unsloth/gemma-4-12b-it-GGUF",
+    "file": "gemma-4-12b-it-UD-Q6_K_XL.gguf",
+    "revision": "fc034cfff751157913579611efad8462ac1be606",
+    "sha256": "70d04059c74be85c5e709921f05acac412b8b8f24f3ee7dd07e91ddc5f4d4de8"
+  },
+  "draftModel": {
+    "repository": "unsloth/gemma-4-12b-it-GGUF",
+    "file": "mtp-gemma-4-12b-it.gguf",
+    "revision": "fc034cfff751157913579611efad8462ac1be606",
+    "sha256": "145db9094bc0f85f1701e255a2ed216dcc9800fc8bc8631ad00905b456bd451b"
+  },
+  "server": {
+    "contextSize": 65536,
+    "parallel": 1,
+    "arguments": [
+      "--n-gpu-layers",
+      "99",
+      "--flash-attn",
+      "on",
+      "--cache-type-k",
+      "q8_0",
+      "--cache-type-v",
+      "q8_0",
+      "--jinja",
+      "--ubatch-size",
+      "2048",
+      "--spec-type",
+      "draft-mtp",
+      "--spec-draft-n-max",
+      "2",
+      "--temp",
+      "1.0",
+      "--top-p",
+      "0.95",
+      "--top-k",
+      "64",
+      "--reasoning-budget",
+      "8192",
+      "--reasoning-budget-message",
+      "Enough thinking. I will act now with the information I have."
+    ]
+  },
+  "chatTemplate": {
+    "thinkingToggleKwarg": "enable_thinking",
+    "file": "gemma-4-ordered-args.jinja"
+  },
+  "requirements": {
+    "minimumVramGiB": 16,
+    "recommendedVramGiB": 16
+  },
+  "capabilities": {
+    "chatCompletions": true,
+    "responses": "verify",
+    "toolCalling": true,
+    "reasoning": true,
+    "vision": false,
+    "audio": false
+  },
+  "status": "experimental"
+}

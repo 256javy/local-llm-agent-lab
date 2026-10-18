@@ -27,6 +27,10 @@ class MatrixTests(unittest.TestCase):
         self.assertEqual(translated, ["-ngl", "99", "-fa", "on", "-ctk", "q8_0", "--load-mode", "mmap"])
         self.assertEqual(ignored, ["--spec-type", "draft-mtp", "--temp", "0.5", "--jinja"])
 
+    def test_server_translation_keeps_load_mode(self) -> None:
+        translated, _ = translate_server_arguments(["--load-mode", "mmap", "-ngl", "99"])
+        self.assertEqual(translated, ["--load-mode", "mmap", "-ngl", "99"])
+
     def test_invalid_raw_is_rejected(self) -> None:
         with self.assertRaisesRegex(LabError, "JSON válido"):
             parse_llama_bench_json("not-json", "pp512")

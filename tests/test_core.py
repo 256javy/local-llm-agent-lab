@@ -80,12 +80,12 @@ class HealthTests(unittest.TestCase):
 class ProfileTests(unittest.TestCase):
     def test_repository_profiles_are_valid(self) -> None:
         profiles = load_profiles(ROOT)
-        self.assertEqual(set(profiles), {"gemma-4-12b-qat-mtp", "gemma-4-26b-a4b-qat-mtp", "gemma-4-e4b-qat-mtp", "qwen-3.6-moe-2bit", "qwen-3.8-27b-iq3xxs-mtp"})
+        self.assertEqual(set(profiles), {"gemma-4-12b-q6kxl-mtp", "gemma-4-12b-q80-mtp", "gemma-4-12b-qat-mtp", "gemma-4-26b-a4b-iq4xs-mtp", "gemma-4-26b-a4b-q3kxl-mtp", "gemma-4-26b-a4b-qat-mtp", "gemma-4-31b-iq3xxs-mtp", "gemma-4-31b-q2kxl-mtp", "gemma-4-31b-q3ks-mtp", "gemma-4-e2b-bf16-mtp", "gemma-4-e2b-qat-q4kxl-mtp", "gemma-4-e4b-q80-mtp", "gemma-4-e4b-qat-mtp", "qwen-3.6-moe-2bit", "qwen-3.8-27b-iq3s-mtp", "qwen-3.8-27b-iq3xxs-mtp", "qwen-3.8-27b-iq4xs-mtp", "qwen-3.8-27b-q3kxl-mtp"})
 
     def test_repository_profiles_pin_llama_cpp_for_sm120(self) -> None:
         profiles = load_profiles(ROOT)
         revisions = {profile["runtime"]["revision"] for profile in profiles.values()}
-        self.assertEqual(revisions, {"57291f2644af8c9df0dd8d44395881c5bdcf0ecd"})
+        self.assertEqual(revisions, {"620d2225cc436ab0b001e3200e590e3b286ef9ab"})
         cmake_args = {tuple(profile["runtime"]["cmakeArgs"]) for profile in profiles.values()}
         self.assertEqual(len(cmake_args), 1)
         for profile in profiles.values():
@@ -93,8 +93,8 @@ class ProfileTests(unittest.TestCase):
 
     def test_docker_runtime_uses_cuda_13(self) -> None:
         dockerfile = (ROOT / "docker/llama-cpp/Dockerfile").read_text(encoding="utf-8")
-        self.assertIn("nvidia/cuda:13.2.1-devel-ubuntu24.04", dockerfile)
-        self.assertIn("nvidia/cuda:13.2.1-runtime-ubuntu24.04", dockerfile)
+        self.assertIn("nvidia/cuda:13.0.3-devel-ubuntu24.04", dockerfile)
+        self.assertIn("nvidia/cuda:13.0.3-runtime-ubuntu24.04", dockerfile)
         self.assertIn("LLAMA_USE_PREBUILT_UI=OFF", dockerfile)
         self.assertIn("--target llama-server llama-bench", dockerfile)
         self.assertIn("/usr/local/bin/llama-bench", dockerfile)

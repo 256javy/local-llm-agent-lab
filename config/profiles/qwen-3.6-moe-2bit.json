@@ -5,7 +5,7 @@
   "runtime": {
     "adapter": "llama-cpp",
     "repository": "https://github.com/ggml-org/llama.cpp.git",
-    "revision": "57291f2644af8c9df0dd8d44395881c5bdcf0ecd",
+    "revision": "620d2225cc436ab0b001e3200e590e3b286ef9ab",
     "cmakeArgs": ["-DGGML_CUDA=ON", "-DGGML_NATIVE=OFF", "-DBUILD_SHARED_LIBS=OFF", "-DCMAKE_CUDA_ARCHITECTURES=120"]
   },
   "model": {
@@ -17,7 +17,7 @@
   "server": {
     "contextSize": 32768,
     "parallel": 1,
-    "arguments": ["--n-gpu-layers", "99", "--flash-attn", "on", "--cache-type-k", "q4_0", "--cache-type-v", "q4_0", "--mmap", "--jinja", "--spec-type", "draft-mtp", "--spec-draft-n-max", "4", "--temp", "0.6", "--top-p", "0.95", "--top-k", "20", "--min-p", "0", "--presence-penalty", "1.0", "--reasoning-budget", "4096", "--reasoning-budget-message", "Enough thinking. I will act now with the information I have."]
+    "arguments": ["--n-gpu-layers", "99", "--flash-attn", "on", "--cache-type-k", "q4_0", "--cache-type-v", "q4_0", "--load-mode", "mmap", "--jinja", "--spec-type", "draft-mtp", "--spec-draft-n-max", "4", "--temp", "0.6", "--top-p", "0.95", "--top-k", "20", "--min-p", "0", "--presence-penalty", "1.0", "--reasoning-budget", "4096", "--reasoning-budget-message", "Enough thinking. I will act now with the information I have."]
   },
   "chatTemplate": {"thinkingToggleKwarg": "enable_thinking"},
   "requirements": {"minimumVramGiB": 15, "recommendedVramGiB": 16},

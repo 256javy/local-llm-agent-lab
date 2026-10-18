@@ -1,0 +1,75 @@
+{
+  "id": "gemma-4-e2b-bf16-mtp",
+  "displayName": "Gemma 4 E2B IT BF16 with MTP",
+  "description": "Variante de cuantización BF16 de Gemma 4 E2B (unsloth/gemma-4-E2B-it-GGUF); solo texto, para comparar contra la variante QAT.",
+  "runtime": {
+    "adapter": "llama-cpp",
+    "repository": "https://github.com/ggml-org/llama.cpp.git",
+    "revision": "620d2225cc436ab0b001e3200e590e3b286ef9ab",
+    "cmakeArgs": [
+      "-DGGML_CUDA=ON",
+      "-DGGML_NATIVE=OFF",
+      "-DBUILD_SHARED_LIBS=OFF",
+      "-DCMAKE_CUDA_ARCHITECTURES=120"
+    ]
+  },
+  "model": {
+    "repository": "unsloth/gemma-4-E2B-it-GGUF",
+    "file": "gemma-4-E2B-it-BF16.gguf",
+    "revision": "0314792d7f1f7e229411f620751375812bb9faf2",
+    "sha256": "1eafd61d010ce8ca09db38f370aadd64c6d792db269c365ad0d9ea2709701890"
+  },
+  "draftModel": {
+    "repository": "unsloth/gemma-4-E2B-it-GGUF",
+    "file": "mtp-gemma-4-E2B-it.gguf",
+    "revision": "0314792d7f1f7e229411f620751375812bb9faf2",
+    "sha256": "9eba819938efccfd6044f8af84e3bbfddc639a2bcf32ebc36420e6a649191919"
+  },
+  "server": {
+    "contextSize": 32768,
+    "parallel": 1,
+    "arguments": [
+      "--n-gpu-layers",
+      "99",
+      "--flash-attn",
+      "on",
+      "--cache-type-k",
+      "q8_0",
+      "--cache-type-v",
+      "q8_0",
+      "--jinja",
+      "--ubatch-size",
+      "2048",
+      "--spec-type",
+      "draft-mtp",
+      "--spec-draft-n-max",
+      "2",
+      "--temp",
+      "1.0",
+      "--top-p",
+      "0.95",
+      "--top-k",
+      "64",
+      "--reasoning-budget",
+      "4096",
+      "--reasoning-budget-message",
+      "Enough thinking. I will act now with the information I have."
+    ]
+  },
+  "chatTemplate": {
+    "thinkingToggleKwarg": "enable_thinking"
+  },
+  "requirements": {
+    "minimumVramGiB": 12,
+    "recommendedVramGiB": 12
+  },
+  "capabilities": {
+    "chatCompletions": true,
+    "responses": "verify",
+    "toolCalling": "verify",
+    "reasoning": true,
+    "vision": false,
+    "audio": false
+  },
+  "status": "experimental"
+}

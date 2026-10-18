@@ -1,4 +1,4 @@
-FROM nvidia/cuda:13.2.1-devel-ubuntu24.04 AS builder
+FROM nvidia/cuda:13.0.3-devel-ubuntu24.04 AS builder
 
 ARG LLAMA_CPP_REPOSITORY=https://github.com/ggml-org/llama.cpp.git
 ARG LLAMA_CPP_REVISION=master
@@ -17,9 +17,9 @@ RUN git init /src/llama.cpp \
 RUN cmake -S /src/llama.cpp -B /src/llama.cpp/build -G Ninja \
        -DCMAKE_BUILD_TYPE=Release ${LLAMA_CPP_CMAKE_ARGS} \
        -DLLAMA_BUILD_UI=OFF -DLLAMA_USE_PREBUILT_UI=OFF \
-    && cmake --build /src/llama.cpp/build --target llama-server llama-bench -j "$(nproc)"
+    && cmake --build /src/llama.cpp/build --target llama-server llama-bench llama-perplexity -j "$(nproc)"
 
-FROM nvidia/cuda:13.2.1-runtime-ubuntu24.04
+FROM nvidia/cuda:13.0.3-runtime-ubuntu24.04
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl jq libgomp1 \
@@ -28,6 +28,7 @@ RUN apt-get update \
 
 COPY --from=builder /src/llama.cpp/build/bin/llama-server /usr/local/bin/llama-server
 COPY --from=builder /src/llama.cpp/build/bin/llama-bench /usr/local/bin/llama-bench
+COPY --from=builder /src/llama.cpp/build/bin/llama-perplexity /usr/local/bin/llama-perplexity
 COPY docker/llama-cpp/entrypoint.sh /usr/local/bin/llm-lab-entrypoint
 RUN chmod +x /usr/local/bin/llm-lab-entrypoint
 

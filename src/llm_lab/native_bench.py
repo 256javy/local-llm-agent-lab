@@ -54,6 +54,7 @@ def translate_server_arguments(arguments: list[str]) -> tuple[list[str], list[st
         "-ctv": "-ctv", "--cache-type-v": "-ctv",
         "-sm": "-sm", "--split-mode": "-sm",
         "-mg": "-mg", "--main-gpu": "-mg",
+        "-lm": "--load-mode", "--load-mode": "--load-mode",
     }
     translated: list[str] = []
     ignored: list[str] = []

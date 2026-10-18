@@ -52,7 +52,7 @@ archivo draft externo empleado por Gemma.
 
 ## Upgrade CUDA 13 y llama.cpp
 
-El runtime fijaba CUDA 13.0.3 (actualizado a 13.2.1 en I-17, ver `BACKLOG.md`) y llama.cpp `b10689`, revisión
+El runtime fija CUDA 13.0.3 (13.2.1 se descartó en I-17, ver `BACKLOG.md`) y fijaba llama.cpp `b10689`, revisión
 `57291f2644af8c9df0dd8d44395881c5bdcf0ecd`, para los cuatro perfiles. Se mantiene
 `CMAKE_CUDA_ARCHITECTURES=120`; Qwen conserva `draft-mtp` con el MTP embebido y
 Gemma conserva su modelo draft separado. La UI embebida y su descarga mutable
