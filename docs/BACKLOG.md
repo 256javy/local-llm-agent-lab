@@ -23,7 +23,7 @@ Estado confirmado al 2026-08-31:
   contienen el upgrade CUDA 13, la promoción de la TUI Rust, `llama-bench`
   nativo y la base inmutable del store de trazas, respectivamente. El PR #3
   documentó el roadmap que conecta benchmarks y trazas.
-- CUDA 13.2.1 (desde I-17; antes 13.0.3) y llama.cpp b10689 están validados en la RTX 5060 Ti con Gemma
+- CUDA 13.0.3 y llama.cpp v0.7.0 (`620d222`, b11669; I-17) están validados en la RTX 5060 Ti con Gemma
   12B, Qwen 3.6 y Qwen 3.8. Gemma 26B es el único perfil cuyo GGUF no está
   descargado.
 - Los modelos activos viven en `LLM_LAB_DATA_DIR`; el archivo frío configurable
@@ -314,7 +314,7 @@ evidencia contradictoria.
 - Observación: Qwen 3.6 Q2 copia mal rutas largas (UUID) y escribe archivos en
   directorios inexistentes; preferir Qwen 3.8 o Gemma para edición.
 
-### I-17 — Actualización de tooling: CUDA 13.2.1 y llama.cpp v0.7.0
+### I-17 — Actualización de tooling: llama.cpp v0.7.0 (CUDA 13.2.1 descartado)
 
 Rama `chore/tooling-cuda-llamacpp-update`. Driver host 595.104.02 (CUDA 13.2).
 Cada cambio se valida por separado para atribuir diferencias de rendimiento.
@@ -337,10 +337,43 @@ Cada cambio se valida por separado para atribuir diferencias de rendimiento.
       `performance-code` 0,233 s (baseline 0,239 s con driver 580).
       Evidencia: `benchmark-results/llama-bench/cuda-ab/` y
       `benchmark-results/17923408{19,20}-*`.
-- [ ] **Paso 2 — llama.cpp `57291f2` → v0.7.0 (`757cad02`)** en los perfiles;
-      reconstruir los candidate y correr la matriz completa
-      (performance, tools, quality, context) contra la actual.
-- [ ] Actualizar los perfiles experimental en la misma pasada o después.
+      **Descartado:** con 13.2.1, `qwen-3.8-27b-iq3xxs-mtp` genera texto basura
+      (HTTP 500 `peg-native format` con `57291f2`; salida ilegible con v0.7.0).
+      Con la misma revisión, driver y GGUF sobre 13.0.3, smoke pasa. Gemma Q4_K
+      no se ve afectado. Se vuelve a 13.0.3; reevaluar con la próxima CUDA o
+      llama.cpp, empezando por el smoke de qwen IQ3_XXS.
+- [~] **Paso 2 — llama.cpp `57291f2` (b10689) → v0.7.0 (`620d222`, b11669)**
+      en los cinco perfiles base. El objeto del tag anotado es `757cad02`; se fija
+      el commit. v0.7.0 elimina `--mmap`: `qwen-3.6-moe-2bit` usa
+      `--load-mode mmap` y `llm-lab bench` lo traduce. Qwen IQ3_XXS sobre 13.0.3:
+      smoke ✅. Falta la matriz completa de candidate contra el baseline
+      `benchmark-results/llama-bench/llamacpp-ab/base/`.
+- [ ] **Paso 3 — master post v0.7.0.** Interesan `2744e48d1` (MMVQ más rápido
+      para Q3_K/Q6_K/Q2_K/IQ3_S/IQ2_S), `f2f667b02` (fusión top-k de expertos MoE)
+      y fixes de fattn. Hacer A/B con llama-bench contra v0.7.0 y adoptar si mejora.
+- [~] Variantes de cuantización (perfiles `experimental`, solo texto, en el HDD):
+      Qwen 3.8 27B IQ3_S, Q3_K_XL, IQ4_XS (descargadas); Gemma 4 12B Q6_K_XL/Q8_0,
+      26B-A4B IQ4_XS/Q3_K_XL, 31B IQ3_XXS/Q2_K_XL/Q3_K_S, E4B Q8_0, E2B BF16 y
+      E2B QAT Q4_K_XL (en descarga). Pendiente sin descargar: 26B-A4B Q4/Q5 con
+      `--n-cpu-moe`.
+- [x] `llm-lab pull` descarga los GGUF en el host con un lock por perfil
+      (reanuda `.part`, reintenta y verifica sha256); ya no toma el lock de control
+      ni hace `compose down`, así que se puede descargar con otro perfil activo.
+      Agrega `--models-only` y `--runtime-only`.
+
+### I-18 — Benchmarks de calidad por cuantización y agentic
+
+Investigación del 2026-10-18 (fuentes en la sesión; hay datos sin verificar):
+
+- [~] **P1** KLD con `llama-perplexity` (wikitext-2, logits base en el HDD
+      `eval/kld-base/`): `llm-lab kld <perfil> --reference <perfil Q8_0/BF16>`.
+      Ya está implementado; falta la primera corrida real. Es el filtro para descartar cuantizaciones.
+- [ ] **P1** BFCL v4 (tool calling multi-turn/agentic), directo o vía EvalScope.
+- [ ] **P2** Aider Polyglot (225 ejercicios, 6 lenguajes) contra `:18080/v1`.
+- [ ] **P2** Terminal-Bench 2.0 (Harbor), subset; resolver el ruteo de LiteLLM.
+- [ ] **P3** GuideLLM / `llama-batched-bench` para TTFT y concurrencia.
+- Descartados por costo/validez: SWE-bench Verified completo y tau2-bench con
+  un simulador local.
 
 ### I-16 — Tierlist de modelos y almacenamiento
 
