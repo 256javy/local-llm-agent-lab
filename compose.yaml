@@ -21,6 +21,7 @@ services:
       - ./config/templates:/opt/llm-lab/templates:ro
       - ${LLM_LAB_DATA_DIR:-./data}/huggingface:/root/.cache/huggingface
       - ${LLM_LAB_DATA_DIR:-./data}/models:/models
+      - ${LLM_LAB_DATA_DIR:-./data}/eval:/eval
     shm_size: "2g"
     deploy:
       resources:

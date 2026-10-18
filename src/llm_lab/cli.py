@@ -35,6 +35,8 @@ from .core import (
     wait_for_health,
     write_state,
 )
+from .downloads import download_profile_artifacts
+from .kld import execute_kld
 from .native_bench import execute_native_bench
 from .mtp_sweep import execute_mtp_sweep
 from .traces import TraceStore, begin_exact_capture, capture_opencode, capture_pi, finish_exact_capture
@@ -479,21 +481,11 @@ def command_storage(settings: Settings, args: argparse.Namespace) -> None:
 
 def command_pull(settings: Settings, args: argparse.Namespace) -> None:
     profile = get_profile(settings, args.profile)
-    with control_lock(settings):
-        if docker_container_running() or read_state(settings):
-            raise LabError("Detén el perfil activo antes de preparar otro", 1)
-        require_data_mount(settings)
-        settings.data_dir.mkdir(parents=True, exist_ok=True)
-        env = compose_env(settings, profile)
-        run(compose_command(settings, "build", "server"), cwd=settings.repo_dir, env=env)
-        try:
-            run(
-                compose_command(settings, "run", "--rm", "-e", "LLM_LAB_MODE=pull", "--no-deps", "server"),
-                cwd=settings.repo_dir,
-                env=env,
-            )
-        finally:
-            run(compose_command(settings, "down", "--remove-orphans"), cwd=settings.repo_dir, env=env, check=False)
+    # Downloads run on the host under a per-profile lock, so they never block or stop a running server.
+    if not args.runtime_only:
+        download_profile_artifacts(settings, profile)
+    if not args.models_only:
+        run(compose_command(settings, "build", "server"), cwd=settings.repo_dir, env=compose_env(settings, profile))
     print(f"Runtime y artefactos preparados para {profile['id']}")
 
 
@@ -529,6 +521,20 @@ def command_bench(settings: Settings, args: argparse.Namespace) -> None:
             repetitions=args.repetitions, no_warmup=args.no_warmup,
         )
     print(f"Benchmark nativo guardado en {manifest}")
+
+
+def command_kld(settings: Settings, args: argparse.Namespace) -> None:
+    profile = get_profile(settings, args.profile)
+    reference = get_profile(settings, args.reference)
+    with control_lock(settings):
+        if docker_project_running() or read_state(settings):
+            raise LabError("Detén el perfil activo antes de medir KLD", 1)
+        output_root = (args.output or settings.repo_dir / "benchmark-results" / "kld").expanduser().resolve()
+        result = execute_kld(
+            settings, profile, reference, output_root=output_root,
+            chunks=args.chunks, reference_gpu_layers=args.reference_gpu_layers,
+        )
+    print(f"KLD guardado en {result}")
 
 
 def command_mtp_sweep(settings: Settings, args: argparse.Namespace) -> None:
@@ -641,8 +647,11 @@ def build_parser() -> argparse.ArgumentParser:
     logs = sub.add_parser("logs", help="Muestra logs del servidor")
     logs.add_argument("--follow", action="store_true")
     logs.add_argument("--tail", type=int, default=200)
-    pull = sub.add_parser("pull", help="Prepara el runtime de un perfil")
+    pull = sub.add_parser("pull", help="Descarga los modelos y construye el runtime de un perfil")
     pull.add_argument("profile")
+    pull_scope = pull.add_mutually_exclusive_group()
+    pull_scope.add_argument("--models-only", action="store_true", help="Solo descarga los GGUF; puede correr con otro perfil activo")
+    pull_scope.add_argument("--runtime-only", action="store_true", help="Solo construye la imagen del runtime")
     client = sub.add_parser("client-config", help="Genera configuración de cliente")
     client.add_argument("client", choices=["pi", "pi-settings", "opencode"], help="pi genera models.json; pi-settings, las claves recomendadas de settings.json")
     client.add_argument("--output", type=pathlib.Path)
@@ -660,6 +669,12 @@ def build_parser() -> argparse.ArgumentParser:
     bench.add_argument("--output", type=pathlib.Path)
     bench.add_argument("--repetitions", type=int, default=None)
     bench.add_argument("--no-warmup", action="store_true")
+    kld = sub.add_parser("kld", help="Mide la divergencia KL de un perfil contra un perfil de referencia")
+    kld.add_argument("profile")
+    kld.add_argument("--reference", required=True, help="Perfil del mismo modelo con mayor precisión (Q8_0/BF16)")
+    kld.add_argument("--chunks", type=int, default=100, help="Chunks de wikitext-2 a evaluar")
+    kld.add_argument("--reference-gpu-layers", help="Capas en GPU para la referencia si no entra completa")
+    kld.add_argument("--output", type=pathlib.Path)
     mtp_sweep = sub.add_parser("mtp-sweep", help="Compara MTP activo e inactivo con distintos límites de draft")
     mtp_sweep.add_argument("profile")
     mtp_sweep.add_argument("--draft-n-max", type=int, nargs="+", required=True, help="Valores positivos para --spec-draft-n-max")
@@ -716,6 +731,7 @@ def main() -> int:
         "client-config": command_client_config,
         "benchmark": command_benchmark,
         "bench": command_bench,
+        "kld": command_kld,
         "mtp-sweep": command_mtp_sweep,
         "storage": command_storage,
         "trace": command_trace,

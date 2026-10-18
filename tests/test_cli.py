@@ -25,7 +25,7 @@ class CliTests(unittest.TestCase):
         result = invoke("profiles", "--json")
         self.assertEqual(result.returncode, 0, result.stderr)
         payload = json.loads(result.stdout)
-        self.assertEqual(len(payload), 5)
+        self.assertEqual(len(payload), len(list((ROOT / "config" / "profiles").glob("*.json"))))
 
     def test_effective_config(self) -> None:
         result = invoke("config", "show", "--effective")
@@ -151,7 +151,7 @@ class CliTests(unittest.TestCase):
             model = data / "models" / "gemma-4-12b-qat-mtp"
             model.mkdir(parents=True)
             (model / "fixture.gguf").write_text("fixture", encoding="utf-8")
-            environment = {"LLM_LAB_DATA_DIR": str(data), "LLM_LAB_ARCHIVE_DIR": str(archive)}
+            environment = {"LLM_LAB_DATA_DIR": str(data), "LLM_LAB_ARCHIVE_DIR": str(archive), "XDG_STATE_HOME": str(root / "state")}
             archived = invoke("storage", "archive", "gemma-4-12b-qat-mtp", environment_overrides=environment)
             self.assertEqual(archived.returncode, 0, archived.stderr)
             self.assertFalse(model.exists())
