@@ -28,14 +28,15 @@ def sha256_of(path: pathlib.Path) -> str:
 
 
 @contextlib.contextmanager
-def profile_download_lock(directory: pathlib.Path) -> Iterator[None]:
+def profile_download_lock(lock_dir: pathlib.Path, profile_id: str) -> Iterator[None]:
     # Per-profile lock: different profiles download in parallel, and none blocks start/bench/benchmark.
-    directory.mkdir(parents=True, exist_ok=True)
-    with (directory / ".download.lock").open("a+", encoding="utf-8") as handle:
+    # It lives in the user's state dir because model dirs created by older container pulls are root-owned.
+    lock_dir.mkdir(parents=True, exist_ok=True)
+    with (lock_dir / f"{profile_id}.lock").open("a+", encoding="utf-8") as handle:
         try:
             fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
-            raise LabError(f"Ya hay una descarga en curso para {directory.name}", 1) from exc
+            raise LabError(f"Ya hay una descarga en curso para {profile_id}", 1) from exc
         try:
             yield
         finally:
@@ -88,7 +89,8 @@ def download_artifact(
 def download_profile_artifacts(settings: Settings, profile: dict[str, Any], **kwargs: Any) -> list[pathlib.Path]:
     require_data_mount(settings)
     directory = settings.data_dir / "models" / profile["id"]
-    with profile_download_lock(directory):
+    with profile_download_lock(settings.state_dir / "downloads", profile["id"]):
+        directory.mkdir(parents=True, exist_ok=True)
         return [
             download_artifact(directory, profile[key], **kwargs)
             for key in ARTIFACT_KEYS

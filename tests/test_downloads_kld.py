@@ -52,10 +52,12 @@ class DownloadTests(unittest.TestCase):
 
     def test_same_profile_lock_is_exclusive(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            root = pathlib.Path(directory) / "profile"
-            with profile_download_lock(root):
+            root = pathlib.Path(directory)
+            with profile_download_lock(root, "a"):
+                with profile_download_lock(root, "b"):
+                    pass
                 with self.assertRaises(LabError):
-                    with profile_download_lock(root):
+                    with profile_download_lock(root, "a"):
                         pass
 
 
