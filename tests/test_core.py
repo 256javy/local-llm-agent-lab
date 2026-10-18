@@ -93,8 +93,8 @@ class ProfileTests(unittest.TestCase):
 
     def test_docker_runtime_uses_cuda_13(self) -> None:
         dockerfile = (ROOT / "docker/llama-cpp/Dockerfile").read_text(encoding="utf-8")
-        self.assertIn("nvidia/cuda:13.0.3-devel-ubuntu24.04", dockerfile)
-        self.assertIn("nvidia/cuda:13.0.3-runtime-ubuntu24.04", dockerfile)
+        self.assertIn("nvidia/cuda:13.2.1-devel-ubuntu24.04", dockerfile)
+        self.assertIn("nvidia/cuda:13.2.1-runtime-ubuntu24.04", dockerfile)
         self.assertIn("LLAMA_USE_PREBUILT_UI=OFF", dockerfile)
         self.assertIn("--target llama-server llama-bench", dockerfile)
         self.assertIn("/usr/local/bin/llama-bench", dockerfile)

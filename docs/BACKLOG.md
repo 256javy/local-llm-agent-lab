@@ -23,7 +23,7 @@ Estado confirmado al 2026-08-31:
   contienen el upgrade CUDA 13, la promoción de la TUI Rust, `llama-bench`
   nativo y la base inmutable del store de trazas, respectivamente. El PR #3
   documentó el roadmap que conecta benchmarks y trazas.
-- CUDA 13.0.3 y llama.cpp b10689 están validados en la RTX 5060 Ti con Gemma
+- CUDA 13.2.1 (desde I-17; antes 13.0.3) y llama.cpp b10689 están validados en la RTX 5060 Ti con Gemma
   12B, Qwen 3.6 y Qwen 3.8. Gemma 26B es el único perfil cuyo GGUF no está
   descargado.
 - Los modelos activos viven en `LLM_LAB_DATA_DIR`; el archivo frío configurable
@@ -313,6 +313,34 @@ evidencia contradictoria.
       depende del presupuesto del servidor.
 - Observación: Qwen 3.6 Q2 copia mal rutas largas (UUID) y escribe archivos en
   directorios inexistentes; preferir Qwen 3.8 o Gemma para edición.
+
+### I-17 — Actualización de tooling: CUDA 13.2.1 y llama.cpp v0.7.0
+
+Rama `chore/tooling-cuda-llamacpp-update`. Driver host 595.104.02 (CUDA 13.2).
+Cada cambio se valida por separado para atribuir diferencias de rendimiento.
+
+- [x] **Paso 1 — CUDA 13.0.3 → 13.2.1** en ambas etapas del Dockerfile, sin
+      tocar llama.cpp (`57291f2`). A/B con `llm-lab bench` (standard, r5) sobre
+      `gemma-4-12b-qat-mtp`, mismo driver 595 y misma revisión (2026-10-18):
+
+      | Prueba | 13.0.3 t/s | 13.2.1 t/s | Δ |
+      |---|---:|---:|---:|
+      | pp512 | 2424,0 | 2504,9 | +3,3 % |
+      | pp2048 | 2378,4 | 2465,0 | +3,6 % |
+      | pp8192 | 2245,1 | 2317,0 | +3,2 % |
+      | tg128 | 54,4 | 54,6 | +0,3 % |
+      | tg512 | 54,3 | 54,4 | +0,2 % |
+      | tg128-d8192 | 51,5 | 51,5 | 0 % |
+      | tg128-d16384 | 49,6 | 49,6 | 0 % |
+
+      Servidor con MTP: `smoke` y `performance` pasan; mediana
+      `performance-code` 0,233 s (baseline 0,239 s con driver 580).
+      Evidencia: `benchmark-results/llama-bench/cuda-ab/` y
+      `benchmark-results/17923408{19,20}-*`.
+- [ ] **Paso 2 — llama.cpp `57291f2` → v0.7.0 (`757cad02`)** en los perfiles;
+      reconstruir los candidate y correr la matriz completa
+      (performance, tools, quality, context) contra la actual.
+- [ ] Actualizar los perfiles experimental en la misma pasada o después.
 
 ### I-16 — Tierlist de modelos y almacenamiento
 
