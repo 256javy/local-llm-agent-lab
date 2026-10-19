@@ -395,6 +395,45 @@ Cada cambio se valida por separado para atribuir diferencias de rendimiento.
 - [x] Perfiles retirados (2026-10-18, GGUF borrados del HDD): Gemma 4 31B Q3_K_S (no
       completó context con 24K) y Q2_K_XL, E2B BF16 y QAT Q4_K_XL (E2B descartado) y
       Qwen 3.6 MoE 2-bit (superado por Qwen 3.8 27B). Se recuperan desde git.
+- [~] Selección de `candidate` (2026-10-18/19, master `ff5a233`, CUDA 13.0.3).
+      pi-agent-bench (26 tareas × baseline/local, 1 repetición, THINKING=off):
+
+      | Perfil | baseline | local | daño b/l | tools/tarea | errores tool b/l |
+      |---|---:|---:|---:|---:|---:|
+      | qwen-3.8-27b-iq3xxs-mtp | 24/26 | 25/26 | 2/0 | 7,3 | 12/12 |
+      | qwen-3.8-27b-q3kxl-mtp | 24/26 | 24/26 | 2/1 | 6,6 | 6/8 |
+      | gemma-4-26b-a4b-q3kxl-mtp | 22/26 | 23/26 | 3/1 | 10,3 | 27/29 |
+      | gemma-4-26b-a4b-qat-mtp | 20/26 | 22/26 | 3/3 | 12,5 | 39/64 |
+      | gemma-4-31b-iq3xxs-mtp | inválido: llama-server abortó con `CUDA error: the launch timed out` |
+
+      BFCL v4 (`benchmarks/bfcl/run.sh`, muestra fija de 50 casos por categoría, FC
+      por `/v1/chat/completions`), % de aciertos:
+
+      | Categoría | Qwen IQ3_XXS | Qwen Q3_K_XL | Gemma 26B Q3_K_XL | Gemma 26B QAT | Gemma 31B |
+      |---|---:|---:|---:|---:|---:|
+      | simple_python | 94 | 90 | 88 | 92 | 90 |
+      | multiple | 92 | 94 | 92 | 92 | 94 |
+      | parallel | 94 | 92 | 92 | 92 | 92 |
+      | parallel_multiple | 78 | 86 | 84 | 78 | 92 |
+      | irrelevance | 86 | 78 | 80 | 74 | 86 |
+      | live_simple | 82 | 86 | 86 | 90 | 84 |
+      | live_multiple | 68 | 72 | 64 | 62 | 66 |
+      | live_irrelevance | 66 | 60 | 68 | 66 | 58 |
+      | multi_turn_base | 74 | 76 (34/50) | 80 | 80 | 25 (4/50) |
+      | Promedio | 81,6 | 81,6 | 81,6 | 80,7 | — |
+
+      BFCL no discrimina (±6-12 pp con 50 casos): todos llaman tools igual de bien, así
+      que la diferencia en Pi está en la planificación de tareas largas, no en las tool
+      calls. Propuesta: Qwen IQ3_XXS sigue como `candidate` de agente; Gemma 26B Q3_K_XL
+      pasa a `candidate` para apps con tool calling (odontia), porque iguala en BFCL a
+      ~3× la velocidad, y reemplaza a QAT, que pierde en pi-agent-bench. Para retirar:
+      Qwen Q3_K_XL (sin ganancia, más VRAM y más lento), Gemma 31B (lento, inestable y
+      no gana en nada) y Gemma 26B QAT, salvo que odontia necesite su latencia.
+      Incidencias: `CUDA error: the launch timed out` con Gemma 31B y 26B Q3_K_XL (no
+      con Qwen) en prompts largos, probablemente por el watchdog del display en la GPU
+      con X; `run.sh` reinicia el servidor y regenera los casos con error de conexión.
+      Claude Code mató dos corridas por presión de RAM (swap 8 GB); conviene correrlas
+      con la sesión gráfica liviana.
 
 ### I-18 — Benchmarks de calidad por cuantización y agentic
 

@@ -163,3 +163,12 @@ parte de la validación rápida ni deben descargar dependencias implícitamente.
 Las comparaciones entre runtimes deben usar el mismo modelo, cuantización,
 contexto, sampling y fixtures. Las comparaciones entre perfiles representan la
 experiencia completa y no aíslan el costo del runtime.
+
+## BFCL (tool calling)
+
+`benchmarks/bfcl/run.sh perfil [...]` corre una muestra fija del Berkeley Function
+Calling Leaderboard contra `127.0.0.1:18080/v1`, un perfil por vez. El venv
+(`torch` CPU) y los resultados viven en `/mnt/storage-lv/local-llm-agent-lab/bfcl`;
+la instalación está en la cabecera del script. Si el servidor se cae, lo reinicia y
+regenera solo los casos con error de conexión. Los puntajes son parciales
+(`--partial-eval`): sirven para comparar perfiles, no con el leaderboard oficial.
