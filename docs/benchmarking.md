@@ -116,7 +116,7 @@ revisión, hash del modelo, traducción de argumentos y resultados, y
 `summary.md`, con una tabla legible. Para una ruta local distinta:
 
 ```bash
-./bin/llm-lab bench qwen-3.6-moe-2bit --output /ruta/resultados
+./bin/llm-lab bench qwen-3.8-27b-iq3xxs-mtp --output /ruta/resultados
 ```
 
 `--repetitions` permite una corrida diagnóstica más corta. `--no-warmup` crea

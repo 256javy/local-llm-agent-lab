@@ -35,7 +35,7 @@ cp .env.example .env
 Cambiar de modelo libera primero el perfil activo:
 
 ```bash
-./bin/llm-lab switch qwen-3.6-moe-2bit
+./bin/llm-lab switch qwen-3.8-27b-iq3xxs-mtp
 ./bin/llm-lab status
 ./bin/llm-lab stop
 ```

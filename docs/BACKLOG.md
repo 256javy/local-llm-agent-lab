@@ -392,6 +392,9 @@ Cada cambio se valida por separado para atribuir diferencias de rendimiento.
       (reanuda `.part`, reintenta y verifica sha256); ya no toma el lock de control
       ni hace `compose down`, así que se puede descargar con otro perfil activo.
       Agrega `--models-only` y `--runtime-only`.
+- [x] Perfiles retirados (2026-10-18, GGUF borrados del HDD): Gemma 4 31B Q3_K_S (no
+      completó context con 24K) y Q2_K_XL, E2B BF16 y QAT Q4_K_XL (E2B descartado) y
+      Qwen 3.6 MoE 2-bit (superado por Qwen 3.8 27B). Se recuperan desde git.
 
 ### I-18 — Benchmarks de calidad por cuantización y agentic
 

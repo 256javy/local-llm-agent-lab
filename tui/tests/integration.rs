@@ -20,14 +20,14 @@ fn load_repository_profiles() {
     let settings = llm_lab_tui::config::load(repo).expect("settings");
     let profiles = llm_lab_tui::profiles::load(&settings).expect("profiles");
     assert!(profiles.contains_key("gemma-4-12b-qat-mtp"));
-    assert!(profiles.contains_key("qwen-3.6-moe-2bit"));
+    assert!(profiles.contains_key("qwen-3.8-27b-iq3xxs-mtp"));
 }
 
 #[test]
 fn qwen_profile_preserves_cuda_architecture() {
     let repo = repo_dir();
     let settings = llm_lab_tui::config::load(repo).expect("settings");
-    let profile = llm_lab_tui::profiles::get(&settings, "qwen-3.6-moe-2bit").expect("qwen profile");
+    let profile = llm_lab_tui::profiles::get(&settings, "qwen-3.8-27b-iq3xxs-mtp").expect("qwen profile");
 
     assert!(profile.runtime.cmake_args.iter().any(|arg| arg == "-DCMAKE_CUDA_ARCHITECTURES=120"));
     assert!(!profile.runtime.cmake_args.iter().any(|arg| arg.contains("LLAMA_BUILD_WEBUI")));

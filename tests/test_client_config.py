@@ -78,14 +78,14 @@ class PiClientConfigTests(unittest.TestCase):
         self.assertEqual(merge_settings({"a": 1, "b": {"x": 1}}, {"a": 2, "b": {"y": 2}}), {"a": 2, "b": {"x": 1, "y": 2}})
 
     def test_invalid_chat_template_is_rejected(self) -> None:
-        profile = dict(self.profiles["qwen-3.6-moe-2bit"])
+        profile = dict(self.profiles["qwen-3.8-27b-iq3xxs-mtp"])
         profile["chatTemplate"] = {"thinkingToggleKwarg": ""}
         self.assertTrue(any("chatTemplate" in error for error in validate_profile(profile)))
         profile["chatTemplate"] = {"unknown": "x"}
         self.assertTrue(any("chatTemplate" in error for error in validate_profile(profile)))
 
     def test_only_verified_vision_reaches_clients(self) -> None:
-        profile = json.loads(json.dumps(self.profiles["qwen-3.6-moe-2bit"]))
+        profile = json.loads(json.dumps(self.profiles["qwen-3.8-27b-iq3xxs-mtp"]))
         for vision, expected in ((True, ["text", "image"]), ("verify", ["text"]), (False, ["text"])):
             profile["capabilities"]["vision"] = vision
             self.assertEqual(pi_model(profile)["input"], expected)
@@ -96,7 +96,7 @@ class PiClientConfigTests(unittest.TestCase):
             self.assertEqual(model["modalities"]["input"], pi_model(self.profiles[profile_id])["input"])
 
     def test_invalid_multimodal_projector_is_rejected(self) -> None:
-        profile = dict(self.profiles["qwen-3.6-moe-2bit"])
+        profile = dict(self.profiles["qwen-3.8-27b-iq3xxs-mtp"])
         profile["multimodalProjector"] = {"repository": "no-slash", "file": "", "sha256": "xyz"}
         errors = [error for error in validate_profile(profile) if "multimodalProjector" in error]
         self.assertEqual(len(errors), 3)
