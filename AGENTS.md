@@ -36,3 +36,7 @@ docker compose config --quiet
 
 Las validaciones que descargan modelos o construyen runtimes pesados deben
 ejecutarse explícitamente y registrarse en `docs/BACKLOG.md`.
+
+## Papercuts
+
+Lo que frene el desarrollo en este repo va a `docs/papercuts.md` (`- YYYY-MM-DD · host · síntoma · fix`, al final). Ante una falla rara de build, tests o CI, búscalo ahí con `grep -i` antes de investigar.
